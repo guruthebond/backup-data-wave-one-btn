@@ -1,0 +1,15 @@
+[Unit]
+Description=Flask Web UI Application
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/backup-data/web-ui
+Environment="PATH=/backup-data/myenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+AmbientCapabilities=CAP_SYS_ADMIN
+ExecStart=/backup-data/myenv/bin/python /backup-data/web-ui/app.py
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+

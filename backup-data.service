@@ -1,0 +1,18 @@
+[Unit]
+Description=Start GIF Animation for Backup Data Service
+After=multi-user.target
+
+[Service]
+Type=forking
+User=root
+ExecStart=/bin/bash -c 'source /backup-data/myenv/bin/activate && /backup-data/myenv/bin/python3 /backup-data/startup.py'
+WorkingDirectory=/backup-data
+Environment="VIRTUAL_ENV=/backup-data/myenv"
+Environment="PATH=/usr/sbin:/usr/bin:/sbin:/bin:/backup-data/myenv/bin:$PATH"
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=backup-data
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,2 @@
+KERNEL=="sd*", SUBSYSTEM=="block", MODE="0660", GROUP="plugdev"
+

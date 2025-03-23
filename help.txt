@@ -1,0 +1,14 @@
+Just Copy: - Copies files just as it is. \n- It will create folder just-backup in destination folder
+Dated Copy: Copy files based on dates, it will create folder in destination drive named as dated-backup
+Copy History: Shows hstory of copied files 
+Disk Info:Check Disk total and free space of each partiton 
+Disk Check:Check Disk if it is unable to detect 
+WebUI Backup: Copy files using Phone \n1. First Press WebUI Backup \n2. Connect your phone to WIFI network "BackMeUP" \n3. Enter password 11223344 and then press SELECT \n4. Scan the QR code from phone to acess WebUI
+Settings: Manage Settings 
+
+Version:Version of "Back Me Up" software
+Update:Apply updates by coping the update files in any of usb drive and plugging in. To know more visit visit backmeup.in
+Reboot:Reboot your device 
+Shutdown:Shutdown your device
+Set Time:Set Date/time of your device 
+Back:Go Back to Main Men

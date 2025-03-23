@@ -1,0 +1,14 @@
+[Unit]
+Description=Toggle wlan0 interface up/down
+After=network.target
+
+[Service]
+ExecStart=/backup-data/web-ui/toggle-wlan0.sh
+RemainAfterExit=true
+Type=oneshot
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

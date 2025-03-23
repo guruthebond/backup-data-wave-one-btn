@@ -1,0 +1,11 @@
+[Unit]
+Description=Reset Script Service
+After=multi-user.target
+
+[Service]
+ExecStart=/backup-data/myenv/bin/python /backup-data/reset.py
+Restart=no
+User=root
+WorkingDirectory=/backup-data/
+[Install]
+WantedBy=multi-user.target

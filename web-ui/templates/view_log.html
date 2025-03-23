@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}View Log{% endblock %}
+
+{% block styles %}
+    <style>
+        pre {
+            white-space: pre-wrap; /* Ensure text wraps */
+            word-wrap: break-word; /* Break long words */
+            font-size: 1rem; /* Adjust font size */
+            line-height: 1.4;
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 100%;
+            overflow-x: auto; /* Allow scrolling for long lines */
+            color: #333; /* Default text color */
+        }
+
+        /* Dark mode styles for the pre element */
+        body.dark-mode pre {
+            background-color: #333;
+            color: #f1f1f1;
+        }
+
+        /* Dark mode styles for the container */
+        body.dark-mode .container {
+            background-color: #222;
+            color: #f1f1f1;
+        }
+
+        /* Dark mode styles for the heading */
+        body.dark-mode h1 {
+            color: #f1f1f1;
+        }
+
+        @media (max-width: 576px) {
+            pre {
+                font-size: 0.9rem; /* Smaller font size for small screens */
+                padding: 8px;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <h1>Log Content</h1>
+        <pre>{{ log_content }}</pre>
+    </div>
+{% endblock %}
