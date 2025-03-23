@@ -52,3 +52,4 @@ Werkzeug==3.1.3
 packaging==24.2
 rpi-lgpio==0.6
 pytz
+psutil
