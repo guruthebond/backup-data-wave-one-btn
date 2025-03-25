@@ -53,3 +53,4 @@ packaging==24.2
 rpi-lgpio==0.6
 pytz
 psutil
+flask-session
