@@ -1343,7 +1343,7 @@ def navigate_menu(menu, title="PurrfectBackup"):
             return menu[selected_index]
         elif button_right.is_pressed:  # Help button
             time.sleep(0.2)
-            show_help(menu[selected_index])
+            #show_help(menu[selected_index])
 
         time.sleep(0.1)  # Reduce CPU usage
 
