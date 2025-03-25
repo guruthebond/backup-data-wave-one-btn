@@ -19,7 +19,21 @@
         border: 1px solid #555;
         color: #f1f1f1;
     }
+    .form-container-browse {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #C0C0C0;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
 
+    body.dark-mode .form-container-browse {
+        background-color: #333;
+        border: 1px solid #555;
+        color: #f1f1f1;
+    }
     h1 {
         text-align: center;
         margin-bottom: 1.5rem;
@@ -36,16 +50,21 @@
         color: #f1f1f1;
         background-color: #444;
     }
-
     h2 {
+        text-align: center;
+        margin-bottom: 1.5rem;
         font-size: 1.4rem;
-        font-weight: 500;
+        font-weight: 600;
         color: #333;
-        margin-top: 1.5rem;
+        background-color: #fff;
+        padding: 0.5rem;
+        border-radius: 8px;
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     body.dark-mode h2 {
         color: #f1f1f1;
+        background-color: #444;
     }
 
     .form-group {
@@ -250,11 +269,34 @@
     setInterval(updateProgress, 1000); // Update every second
 </script>
 
-<div class="form-container">
+<div class="form-container-browse">
     <!---<h2>Select Folders</h2>
-
+        <!-- Separate Browse Section -->
+        <!-- Browse Table -->
+    <h1>Browse Folders</h1>
+    <table class="folder-table">
+        <thead>
+            <tr>
+                <th>Source Disk</th>
+                <th>Destination Disk</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="text-align: left;">
+                    <a href="{{ url_for('browse_folder', base_path='/mnt/usb/source', home_url=session['home_url']) }}" class="start-copy-btn">Src. Files</a>
+                </td>
+                <td style="text-align: left;">
+                    <a href="{{ url_for('browse_folder', base_path='/mnt/usb/destination', home_url=session['home_url']) }}" class="start-copy-btn">Dest. Files</a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<div class="form-container">
     <!-- Source Folders Table -->
-    <h1>Source Folder</h1>
+    <h1>Copy File via Web UI</h1>
+    <h2>Source Folder</h2>
     <table class="folder-table">
         <thead>
             <tr>
@@ -275,7 +317,7 @@
     </table>
 
     <!-- Destination Folders Table -->
-    <h1>Destination Folder</h1>
+    <h2>Destination Folder</h2>
     <table class="folder-table">
         <thead>
             <tr>
@@ -406,13 +448,14 @@
     }
 
     .start-copy-btn {
-        padding: 12px 25px;
+        padding: 10px 25px;
         font-size: 1.2rem;
         background-color: #007bff;
         color: white;
         border: none;
         border-radius: 5px;
         cursor: pointer;
+        text-decoration: none; /* Removes underline */
         transition: background-color 0.3s ease;
     }
 
@@ -423,6 +466,7 @@
 
     .start-copy-btn:hover:not(:disabled) {
         background-color: #0056b3;
+        text-decoration: none; /* Removes underline */
     }
 
     .create-folder-btn {
