@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Folders{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Browse: {{ current_path }}</h1>
+
+    <!-- Back Button -->
+    {% if parent_folder %}
+        <p>
+            <a href="{{ url_for('browse_folder', base_path=request.args.get('base_path'), current_path=parent_folder) }}" class="back-btn">
+                ⬆ Go Back
+            </a>
+        </p>
+    {% endif %}
+
+    <!-- Folders Table -->
+    <h2>Folders</h2>
+    <table class="folder-table">
+        <thead>
+            <tr>
+                <th>Folder Name</th>
+                <th>Size</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for folder in folders %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('browse_folder', base_path=request.args.get('base_path'), current_path=folder.path) }}" class="folder-link">
+                            📁 {{ folder.name }}
+                        </a>
+                    </td>
+                    <td>{{ folder.size }}</td>
+                    <td>➡ Open</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Files Table -->
+    <h2>Files</h2>
+    <table class="folder-table">
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+                <tr>
+                    <td>📄 {{ file.name }}</td>
+                    <td>{{ file.size }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Back to Home Button -->
+    <p>
+        <a href="{{ request.args.get('home_url', session.get('home_url', url_for('folder_selection'))) }}" class="start-copy-btn">
+            ⬅ Back to Home
+        </a>
+    </p>
+</div>
+
+<!-- Styles to Match folder.html -->
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    body.dark-mode .form-container {
+        background-color: #333;
+        border: 1px solid #555;
+        color: #f1f1f1;
+    }
+
+    h1, h2 {
+        text-align: center;
+        font-weight: 600;
+        color: #333;
+    }
+
+    body.dark-mode h1, body.dark-mode h2 {
+        color: #f1f1f1;
+    }
+
+    .folder-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1.5rem;
+    }
+
+    .folder-table th, .folder-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    body.dark-mode .folder-table th, body.dark-mode .folder-table td {
+        border-bottom: 1px solid #555;
+    }
+
+    .folder-table th {
+        background-color: #f2f2f2;
+        font-weight: 600;
+    }
+
+    body.dark-mode .folder-table th {
+        background-color: #444;
+        color: #f1f1f1;
+    }
+
+    .folder-link {
+        text-decoration: none;
+        color: #007bff;
+        font-weight: bold;
+    }
+
+    .folder-link:hover {
+        text-decoration: underline;
+    }
+
+    .back-btn {
+        display: inline-block;
+        padding: 8px 18px;
+        font-size: 1rem;
+        background-color: #28a745;
+        color: white;
+        border-radius: 5px;
+        text-decoration: none;
+    }
+
+    .back-btn:hover {
+        background-color: #218838;
+    }
+
+    .start-copy-btn {
+        display: inline-block;
+        padding: 12px 25px;
+        font-size: 1.2rem;
+        background-color: #007bff;
+        color: white;
+        border-radius: 5px;
+        text-decoration: none;
+        text-align: center;
+    }
+
+    .start-copy-btn:hover {
+        background-color: #0056b3;
+    }
+</style>
+{% endblock %}
