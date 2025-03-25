@@ -8,10 +8,19 @@ import time
 import logging
 from datetime import datetime
 import shutil
+from flask import Flask, session  # Import session
+from flask_session import Session  # Import Flask-Session for better handling
 
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
+
+# Configure session to use filesystem (required for session persistence)
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SECRET_KEY'] = 'your_secret_key_here'  # Required for session security
+
+# Initialize Flask-Session
+Session(app)
 
 # Global variables to track mount status and copy progress
 status = ""
@@ -34,6 +43,51 @@ LOG_DIR = 'log'  # Update with the actual log directory path
 #        return render_template('logs.html', logs=log_files)
 #    except Exception as e:
 #        return f"Error listing logs: {str(e)}"
+
+
+@app.route('/browse_folder', methods=['GET'])
+def browse_folder():
+    """Browse folders and display contents, including files."""
+    base_path = request.args.get('base_path', '/mnt/usb/source')  # Default to source
+    current_path = request.args.get('current_path', base_path)
+
+    # Prevent accessing outside the base folder
+    if not current_path.startswith(base_path):
+        current_path = base_path
+
+    # Get folder contents
+    folders, files = list_folders_and_files(current_path)
+
+    # Determine parent folder (if not at base)
+    parent_folder = None
+    if current_path != base_path:
+        parent_folder = os.path.dirname(current_path)
+
+    return render_template('browse.html', folders=folders, files=files, current_path=current_path, parent_folder=parent_folder)
+
+
+def list_folders_and_files(directory):
+    """List folders and files inside a directory."""
+    folders = []
+    files = []
+    
+    try:
+        for item in os.listdir(directory):
+            if item.startswith('.'):
+                continue  # Skip hidden files
+
+            item_path = os.path.join(directory, item)
+            if os.path.isdir(item_path):
+                size = get_folder_size(item_path)
+                size_gb = size / (1024 ** 3)
+                folders.append({'name': item, 'path': item_path, 'size': f"{size_gb:.2f} GB"})
+            else:
+                file_size = os.path.getsize(item_path) / (1024 ** 2)  # Convert to MB
+                files.append({'name': item, 'size': f"{file_size:.2f} MB"})
+    except Exception as e:
+        logging.error(f"Error listing directory {directory}: {e}")
+
+    return folders, files
 
 
 @app.route('/delete_folder', methods=['POST'])
@@ -229,6 +283,10 @@ def mount():
 def folder_selection():
     source_folders = json.loads(request.args.get('source_folders', '[]'))
     destination_folders = json.loads(request.args.get('destination_folders', '[]'))
+
+    # Store the first generated URL in session, if not already set
+    if 'home_url' not in session:
+        session['home_url'] = request.url  # Store the initial URL
     return render_template('folder.html', source_folders=source_folders, destination_folders=destination_folders)
 
 
@@ -345,7 +403,7 @@ def copy_files(source, destination):
                 copy_progress = "Copy completed successfully."
                 overall_progress = 100
                 copy_complete = True
-                report_webui.generate_reports()
+                report_webui.generate_reports(source, destination)
             else:
                 error_output = process.stderr.read()
                 log_file.write(f"\nError: {error_output}\n")
