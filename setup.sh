@@ -71,6 +71,7 @@ pip install --upgrade pip  --trusted-host pypi.org --trusted-host files.pythonho
 pip install -r requirements.txt  --trusted-host pypi.org --trusted-host files.pythonhosted.org
 echo "Installing DejaVu font..."
 mv dejavu-sans.condensed.ttf /usr/share/fonts/truetype/dejavu/dejavu-sans.condensed.ttf
+mv lineawesome-webfont.ttf /usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf
 
 # Configure system services
 echo "Configuring system services..."
