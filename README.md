@@ -1,99 +1,137 @@
+Here's a comprehensive GitHub documentation (README.md) for your Backup Data Setup Script based on the provided script:
+
 ```markdown
-# Backup Data using Rapberry Pi with 0.96 inch OLED
+# Backup Data Setup System
 
-This project is designed to help content creators like photographers and videographers back up their data in a simple, space-saving manner. Follow the instructions below to set up and use the project on your system.
+![Project Banner](https://example.com/path/to/banner.png) <!-- Add your banner image if available -->
 
-## Prerequisites
+## 📌 Overview
 
-Make sure you have the following installed on your system:
+This project provides a complete setup for a Raspberry Pi-based backup data system with:
+- Automated backup services
+- Web UI interface
+- Wi-Fi hotspot configuration
+- System optimization for headless operation
 
-- A Linux-based OS (Ubuntu/Debian-based system recommended)
-- Python 3
-- `pip` for Python package management
-- Git
+## 🛠️ Hardware Requirements
 
+- Raspberry Pi (5 recommended)
+- MicroSD card (32GB+ recommended)
+- External storage (USB HDD/SSD)
+- Power supply (5V/3A recommended)
 
-Install : sudo apt-get install libopenjp2-7
+## 🚀 Installation
 
-Enable I2C on your Raspberry Pi: To use I2C, you need to ensure it's enabled in the Raspberry Pi settings:
+### Prerequisites
+- Raspberry Pi Lite OS (64-bit recommended)
+- Internet connection for initial setup
 
-Run sudo raspi-config.
-Navigate to Interface Options.
-Select I2C and enable it.
+### Setup Instructions
 
-Disabl e UB Curerent lmit  in Performance Options 
-Reboot your Raspberry Pi for the changes to take effect.wq
-
-## Installation
-
-1. **Create a folder for the project**  
-   Before pulling the repository, create a folder on your system:
-
+1. **Clone the repository**:
    ```bash
-   mkdir /backup-data
+   git clone git@github.com:guruthebond/backup-data-wave.git /backup-data
    cd /backup-data
    ```
 
-2. **Update your system**  
-   Run the following commands to update your system:
-
+2. **Make the script executable**:
    ```bash
-   sudo apt-get update
-   sudo apt-get upgrade
-   sudo reboot
+   chmod +x setup.sh
    ```
 
-3. **Install Python and pip**  
-   Install Python and `pip` if they are not already installed:
-
+3. **Run the setup script**:
    ```bash
-   sudo apt install python3-pip
+   sudo ./setup.sh
    ```
 
-4. **Set up Git repository**  
-   Set the remote URL for the repository:
+## ⚙️ Configuration
 
-   ```bash
-   git remote set-url origin git@github.com:guruthebond/backup-data.git
-   git remote -v  # To validate the remote URL
-   ```
+### Network Setup
+The script configures:
+- Static IP: `192.168.0.1` for wlan0
+- Wi-Fi hotspot: 
+  - SSID: `BackMeUp`
+  - Password: `11223344`
+  - Channel: 7
 
-   Pull the project from the repository:
+### System Services
+The following services are installed and enabled:
+- `backup-data.service` - Main backup service
+- `web-ui-flask-app.service` - Web interface
+- `reset.service` - System reset handler
 
-   ```bash
-   git pull origin main --allow-unrelated-histories
-   ```
+### Optimizations
+The script applies several system optimizations:
+- Disables unnecessary services
+- Configures boot parameters for faster startup
+- Sets maximum USB current
+- Disables unused hardware (audio, camera, etc.)
 
-5. **Upgrade pip**  
-   Upgrade `pip` to the latest version:
+## 📂 Directory Structure
 
-   ```bash
-   pip install --upgrade pip
-   ```
+```
+/backup-data/
+├── myenv/                  # Python virtual environment
+├── web-ui/                 # Web interface files
+├── backup-data.service     # Main service file
+├── reset.service           # Reset service
+├── requirements.txt        # Python dependencies
+├── setup.sh                # This setup script
+└── version                 # Version information
+```
 
-6. **Create a virtual environment**  
-   Create and activate a virtual environment:
+## 🔄 Backup System
 
-   ```bash
-   python3 -m venv myenv
-   source myenv/bin/activate
-   ```
+The system automatically creates backups of:
+- Application data in `/root/backup-data-stable`
+- Service files in `/root/backup-data-services`
 
-7. **Install dependencies**  
-   Install the required Python dependencies:
+## 🌐 Web Interface
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+After setup, access the web UI at:
+```
+http://<your-pi-ip>:5000
+```
 
-## Usage
+## 🔧 Troubleshooting
 
-Now you can use the project for backing up data as per the instructions provided within the repository. Follow the instructions in the documentation for further details on usage.
+### Common Issues
 
-## Contributing
+1. **Wi-Fi hotspot not starting**:
+   - Check if hostapd is running: `sudo systemctl status hostapd`
+   - Verify configuration: `sudo journalctl -u hostapd`
 
-Contributions are welcome! Feel free to fork the repository, make changes, and submit pull requests.
+2. **Backup service not working**:
+   - Check logs: `journalctl -u backup-data.service -f`
+   - Verify mount points exist
 
-## License
+3. **Web UI inaccessible**:
+   - Check service status: `sudo systemctl status web-ui-flask-app.service`
+   - Verify port 5000 is open: `sudo netstat -tulnp | grep 5000`
+
+## 📜 Version History
+
+- **Version 2.0** (Mar 2025)
+  - Added comprehensive backup system
+  - Improved service management
+  - Enhanced system optimizations
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Raspberry Pi Foundation
+- Hostapd/Dnsmasq developers
+- Python community
+
+```
+
+## Additional Recommendations:
+
+1. Create a `LICENSE` file in your repository
+2. Add screenshots of the web interface in a `/docs/images` folder
+3. Include a `CHANGELOG.md` for version history
+4. Add a `CONTRIBUTING.md` if you want others to contribute
+5. Consider adding a `system-diagram.png` showing the architecture
