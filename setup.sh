@@ -70,7 +70,7 @@ echo "Upgrading pip and installing requirements..."
 pip install --upgrade pip  --trusted-host pypi.org --trusted-host files.pythonhosted.org
 pip install -r requirements.txt  --trusted-host pypi.org --trusted-host files.pythonhosted.org
 echo "Installing DejaVu font..."
-mv DejaVuSansCondensed.ttf /usr/share/fonts/truetype/dejavu/dejavu-sans.condensed.ttf
+mv dejavu-sans.condensed.ttf /usr/share/fonts/truetype/dejavu/dejavu-sans.condensed.ttf
 
 # Configure system services
 echo "Configuring system services..."
