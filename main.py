@@ -36,7 +36,7 @@ gpiozero.pins.lgpio.LGPIOFactory.__init__ = __patched_init
 font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 14)
 font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 12)
 font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 10)
-font_icons = ImageFont.truetype("lineawesome-webfont.ttf", 14)
+font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 14)
 font_massive = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
 font_con = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/dejavu-sans.condensed.ttf",10)
 
@@ -1805,7 +1805,7 @@ def main():
             # Show SSID and Password
             start_hostapd_service()
             # Set the font to the one that includes icons
-            font_icons = ImageFont.truetype("lineawesome-webfont.ttf", 12)  # Adjust size if needed
+            font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)  # Adjust size if needed
             display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "Then [Select]", font_icons=font_icons)
             print("Hit 'Select' to proceed.")
             
