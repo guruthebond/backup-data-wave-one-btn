@@ -94,7 +94,11 @@
     <button class="dark-mode-toggle" id="darkModeToggle" title="Toggle Dark Mode">
         <img src="{{ url_for('static', filename='icons/0-circle-fill.svg') }}" class="icon" alt="Dark Mode" style="width: 20px; height: 20px;">
     </button>
-
+<!-- Logo -->
+<div class="text-center mt-3">
+    <img id="logo" src="{{ url_for('static', filename='PuffrectBakup-Logo-Black.png') }}" 
+         alt="PuffrectBakup Logo" width="250" height="35">
+</div>
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand navbar-light" id="mainNavbar">
         <div class="container-fluid">
@@ -154,6 +158,13 @@
 
             // Save preference to localStorage
             localStorage.setItem('darkMode', !isDarkMode);
+                    // Toggle logo
+        logo.src = isDarkMode 
+            ? "{{ url_for('static', filename='PuffrectBakup-Logo-Black.png') }}" 
+            : "{{ url_for('static', filename='PuffrectBakup-Logo-White.png') }}";
+
+        // Save preference to localStorage
+        localStorage.setItem('darkMode', !isDarkMode);
         });
     </script>
 </body>
