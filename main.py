@@ -78,23 +78,45 @@ def clean_menu_item(menu_item):
     return re.sub(r"[^\w\s]", "", menu_item).strip()
 
 def show_help(menu_item):
-    menu_item = clean_menu_item(menu_item)  # Remove special characters
+    menu_item = clean_menu_item(menu_item)
     help_text = help_texts.get(menu_item, "No help available for this item.")
     
-    wrapped_text = textwrap.wrap(help_text, width=16)  # Wrap text for OLED
-    index = 0
-
+    # Wrap the text properly
+    wrapped_lines = []
+    paragraphs = help_text.split('\n')
+    for para in paragraphs:
+        wrapped_lines.extend(textwrap.wrap(para, width=16))  # Wrap each paragraph
+    
+    index = 0  # Tracks which line we're starting from
+    max_lines = 5  # Number of lines that fit on screen
+    
     while True:
-        display_help_text(help_text, index)  # Show text properly
-        button = get_button_press()
-
+        # Display current portion of text
+        with canvas(device) as draw:
+            y = 0
+            for i in range(index, min(index + max_lines, len(wrapped_lines))):
+                draw.text((0, y), wrapped_lines[i], font=font_medium, fill="white")
+                y += 12  # Line height
+            
+            # Show scroll indicators if needed
+            if index > 0:
+                draw.text((120, 0), "↑", font=font_medium, fill="white")
+            if index + max_lines < len(wrapped_lines):
+                draw.text((120, 52), "↓", font=font_medium, fill="white")
+        
+        # Wait for button press
+        button = None
+        while not button:
+            button = get_button_press()
+            time.sleep(0.05)  # Small delay to prevent CPU overload
+        
+        # Handle button press
         if button == "UP":
-            index = max(0, index - 5)  # Scroll up
+            index = max(0, index - 1)  # Move up one line
         elif button == "DOWN":
-            index = min(len(wrapped_text) - 3, index + 5)  # Scroll down
+            index = min(len(wrapped_lines) - max_lines, index + 1)  # Move down one line
         elif button == "LEFT":
-            return  # Exit help
-
+            return  # Exit help immediately when LEFT is pressed
 
 import textwrap
 
@@ -1637,36 +1659,37 @@ def display_summary(source, dest):
             time.sleep(0.2)  # Debounce
 
             # Show Validate Data screen (same style as summary)
-            validate_options = ["No", "Yes"]
-            validate_index = 0
+            validate = "Yes"
+            #validate_options = ["No", "Yes"]
+            #validate_index = 0
 
-            while True:
-                with canvas(device) as draw:
-                    draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+            #while True:
+            #    with canvas(device) as draw:
+            #        draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
 
                     # Title Bar - Same style as summary
-                    draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
-                    draw.text((2, 1), "Validate Data", font=font_small, fill="black")
+            #        draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
+            #        draw.text((2, 1), "Validate Data", font=font_small, fill="black")
 
-                    # Display source and destination (matching summary layout)
-                    draw.text((2, 20), f"Validate exsisting", font=font_medium, fill="white")
-                    draw.text((2, 35), f"files on dest.?", font=font_medium, fill="white")
-
-                    # Show validation selection with highlight
-                    draw.text((10, 50), f"> {validate_options[validate_index]}", font=font_medium, fill="white")
-
-                if button_up.is_pressed:
-                    validate_index = (validate_index - 1) % len(validate_options)
-                    time.sleep(0.2)
-                elif button_down.is_pressed:
-                    validate_index = (validate_index + 1) % len(validate_options)
-                    time.sleep(0.2)
-                elif button_select.is_pressed:
-                    validate = validate_options[validate_index]  # Store validation choice
-                    break
-                elif button_left.is_pressed:
-                    time.sleep(0.2)
-                    return None
+             #       # Display source and destination (matching summary layout)
+             #       draw.text((2, 20), f"Validate exsisting", font=font_medium, fill="white")
+             #       draw.text((2, 35), f"files on dest.?", font=font_medium, fill="white")
+#
+#                    # Show validation selection with highlight
+#                    draw.text((10, 50), f"> {validate_options[validate_index]}", font=font_medium, fill="white")
+#
+#                if button_up.is_pressed:
+#                    validate_index = (validate_index - 1) % len(validate_options)
+#                    time.sleep(0.2)
+#                elif button_down.is_pressed:
+#                    validate_index = (validate_index + 1) % len(validate_options)
+#                    time.sleep(0.2)
+#                elif button_select.is_pressed:
+#                    validate = validate_options[validate_index]  # Store validation choice
+#                    break
+#                elif button_left.is_pressed:
+#                    time.sleep(0.2)
+#                    return None
 
             # Call Just Copy function with validation parameter
             copy_now(device, validate)
@@ -1706,41 +1729,42 @@ def display_summary_dated(source, dest):
             time.sleep(0.2)
             return None
 
-        # Wait for Select button to proceed
+        #Wait for Select button to proceed
         if button_select.is_pressed:
             time.sleep(0.2)  # Debounce
-
+#
             # Show Validate Data screen (same style as summary)
-            validate_options = ["No", "Yes"]
-            validate_index = 0
+            validate = "Yes"
+           # validate_options = ["No", "Yes"]
+           # validate_index = 0
 
-            while True:
-                with canvas(device) as draw:
-                    draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
-
-                    # Title Bar - Same style as summary
-                    draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
-                    draw.text((2, 1), "Validate Data", font=font_small, fill="black")
-
-                    # Display source and destination (matching summary layout)
-                    draw.text((2, 20), f"Validate exsisting", font=font_medium, fill="white")
-                    draw.text((2, 35), f"files on dest.?", font=font_medium, fill="white")
-
-                    # Show validation selection with highlight
-                    draw.text((10, 50), f"> {validate_options[validate_index]}", font=font_medium, fill="white")
-
-                if button_up.is_pressed:
-                    validate_index = (validate_index - 1) % len(validate_options)
-                    time.sleep(0.2)
-                elif button_down.is_pressed:
-                    validate_index = (validate_index + 1) % len(validate_options)
-                    time.sleep(0.2)
-                elif button_select.is_pressed:
-                    validate = validate_options[validate_index]  # Store validation choice
-                    break
-                elif button_left.is_pressed:
-                    time.sleep(0.2)
-                    return None
+            #while True:
+           #     with canvas(device) as draw:
+           #         draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+#
+#                    # Title Bar - Same style as summary
+#                    draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
+#                    draw.text((2, 1), "Validate Data", font=font_small, fill="black")
+#
+#                    # Display source and destination (matching summary layout)
+#                    draw.text((2, 20), f"Validate exsisting", font=font_medium, fill="white")
+#                    draw.text((2, 35), f"files on dest.?", font=font_medium, fill="white")
+#
+#                    # Show validation selection with highlight
+#                    draw.text((10, 50), f"> {validate_options[validate_index]}", font=font_medium, fill="white")
+#
+#                if button_up.is_pressed:
+#                    validate_index = (validate_index - 1) % len(validate_options)
+#                    time.sleep(0.2)
+#                elif button_down.is_pressed:
+#                    validate_index = (validate_index + 1) % len(validate_options)
+#                    time.sleep(0.2)
+#                elif button_select.is_pressed:
+#                    validate = validate_options[validate_index]  # Store validation choice
+#                    break
+#                elif button_left.is_pressed:
+#                    time.sleep(0.2)
+#                    return None
 
             # Call Just Copy function with validation parameter
             copy_now_dated(device, validate)
