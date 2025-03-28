@@ -234,7 +234,7 @@ fi
 
 # Update boot parameters
 echo "Updating /boot/firmware/cmdline.txt with optimized parameters..."
-echo "console=tty1 root=PARTUUID=5072fd7b-02 rootfstype=ext4 fsck.repair=no rootwait quiet splash loglevel=0 fastboot noswap" | sudo tee /boot/firmware/cmdline.txt
+#echo "console=tty1 root=PARTUUID=5072fd7b-02 rootfstype=ext4 fsck.repair=no rootwait quiet splash loglevel=0 fastboot noswap" | sudo tee /boot/firmware/cmdline.txt
 
 # Assign static IP to Wi-Fi interface
 echo "Assigning Static IP Address to Raspberry Pi..."
