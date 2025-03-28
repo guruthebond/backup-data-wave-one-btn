@@ -240,6 +240,11 @@ echo "console=tty1 root=PARTUUID=5072fd7b-02 rootfstype=ext4 fsck.repair=no root
 echo "Assigning Static IP Address to Raspberry Pi..."
 sudo ip addr add 192.168.0.1/24 dev wlan0
 
+# Update version information
+echo "Updating version information..."
+echo "Version 2.0" > version
+echo "Mar 2025" >> version
+
 # Create system backup
 echo "Creating system backup..."
 echo "Backing up application data to /root/backup-data-stable..."
@@ -250,11 +255,6 @@ cp /etc/systemd/system/backup-data.service /etc/systemd/system/web-ui-flask-app.
 rm /root/backup-data-stable/copy-log.csv
 touch /root/backup-data-stable/copy-log.csv 
 rm -rf /root/backup-data-stable/web-ui/log/* 
-
-# Update version information
-echo "Updating version information..."
-echo "Version 2.0" > version
-echo "Mar 2025" >> version
 
 # Final instructions
 echo "--------------------------------------"
