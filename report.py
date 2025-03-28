@@ -302,7 +302,7 @@ def generate_html_template(title, src_count, src_size, dst_count, dst_size, file
     <div class="filter-buttons">
         <button class="control-btn active" onclick="filterFiles('all')">All Files</button>
         <button class="control-btn" onclick="filterFiles('same')">Same</button>
-        <button class="control-btn" onclick="filterFiles('missing')">Missing</button>
+        <button class="control-btn" onclick="filterFiles('missing')">Missing@Source</button>
     </div>
     
     <div class="sort-options">
@@ -528,7 +528,7 @@ function renderFiles() {{
         const filteredFiles = allFiles.filter(file => {{
             if (currentFilter === 'all') return true;
             if (currentFilter === 'same') return file.status === 'Same';
-            if (currentFilter === 'missing') return file.status === 'Missing';
+            if (currentFilter === 'missing') return file.status === 'Missing@Source';
             return true;
         }});
         
@@ -610,7 +610,7 @@ def get_file_data_json():
                 'dest_path': os.path.relpath(dst_file_path, DST_DIR) if dst_file_path else None,
                 'size': get_file_size_mb(src_file_path),
                 'modified': get_file_mod_date(src_file_path),
-                'status': 'Same' if dst_file_path else 'Missing'
+                'status': 'Same' if dst_file_path else 'Missing@Source'
             })
     
     # Convert to JSON string, escaping special characters
@@ -642,7 +642,7 @@ def generate_comparison_report(comparison_file):
                 'dest_disk': disk_labels['destination'] if dst_file_path else "N/A",
                 'size': get_file_size_mb(src_file_path),
                 'modified': get_file_mod_date(src_file_path),
-                'status': 'Same' if dst_file_path else 'Missing'
+                'status': 'Same' if dst_file_path else 'Missing@Source'
             })
 
 
