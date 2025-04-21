@@ -296,12 +296,11 @@ def rsync_copy_file(device, file_path, dest_file, files_processed, total_files):
     return process.returncode
 
 def bytes_to_human_readable(bytes_size):
-    """Convert bytes to human-readable format (e.g., 1024 → '1.00 KB')."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if abs(bytes_size) < 1024.0:
-            return f"{bytes_size:6.2f} {unit}"
-        bytes_size /= 1024.0
-    return f"{bytes_size:.2f} PB"  # Petabytes (just in case)
+    """Convert bytes to human-readable format matching copynow_dated.py (e.g., 1024 → '1.00MB')."""
+    if bytes_size >= (1024 * 1024 * 1024):
+        return f"{bytes_size / (1024 * 1024 * 1024):.2f}GB"
+    else:
+        return f"{bytes_size / (1024 * 1024):.2f}MB"
 
 def copy_now(device, validate="Yes"):
     global rsync_process, stop_monitoring
