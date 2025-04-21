@@ -23,6 +23,11 @@ import gpiozero.pins.lgpio
 import lgpio
 import pytz
 import datetime
+
+# Add these near the top with other global variables
+last_main_menu_index = 0
+last_settings_menu_index = 0
+
 def __patched_init(self, chip=None):
     gpiozero.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
     chip = 0
@@ -878,72 +883,76 @@ def set_time_manually():
         time.sleep(0.1) #Reduce High CPU Usage
 
 def navigate_menu_time(menu_items, title="Settings"):
-    global selected_index
+    global selected_index, last_settings_menu_index
+    
+    # Restore last position when entering settings menu
+    if menu_items == settings_menu_items:
+        selected_index = last_settings_menu_index
+    
     max_visible_items = 2  # Number of items visible at once
-    selected_index = 0  # Reset selected index
+    prev_index = -1  # Track previous index to avoid unnecessary redraws
 
     while True:
-        with canvas(device) as draw:
-            # Clear the screen
-            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+        if selected_index != prev_index:  # Only redraw if selection changed
+            with canvas(device) as draw:
+                # Clear the screen
+                draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
 
-            # Draw the title and line separator
-            draw.text((2, 2), title, font=font_medium, fill="white")
-            draw.line((0, 18, device.width, 18), fill="white")  # Line below the title
+                # Draw the title and line separator
+                draw.text((2, 2), title, font=font_medium, fill="white")
+                draw.line((0, 18, device.width, 18), fill="white")  # Line below the title
 
-            # Calculate the start index for visible items
-            start_index = selected_index - (selected_index % max_visible_items)
+                # Calculate the start index for visible items
+                start_index = selected_index - (selected_index % max_visible_items)
 
-            # Draw visible menu items
-            for i in range(max_visible_items):
-                if start_index + i >= len(menu_items):
-                    break  # Stop if we exceed the menu items
+                # Draw visible menu items
+                for i in range(max_visible_items):
+                    if start_index + i >= len(menu_items):
+                        break  # Stop if we exceed the menu items
 
-                y = 25 + i * 18  # Adjust y position and spacing
-                item = menu_items[start_index + i]
-                icon = item[0]  # Icon part
-                text = item[1:]  # Text part
+                    y = 25 + i * 18  # Adjust y position and spacing
+                    item = menu_items[start_index + i]
+                    icon = item[0]  # Icon part
+                    text = item[1:]  # Text part
 
-                # Calculate text and icon widths for alignment
-                text_width, text_height = draw.textbbox((0, 0), text, font=font_medium)[2:4]
-                icon_width = draw.textbbox((0, 0), icon, font=font_icons)[2]  # Icon width
-                padding = 1  # Padding for better alignment
+                    # Highlight the selected item
+                    if start_index + i == selected_index:
+                        draw.rectangle((0, y - 1, device.width, y + 15), outline="white", fill="white")
+                        draw.text((2, y), icon, font=font_icons, fill="black")  # Icon in black
+                        draw.text((20, y), text, font=font_medium, fill="black")  # Text in black
+                    else:
+                        draw.text((2, y), icon, font=font_icons, fill="white")  # Icon in white
+                        draw.text((20, y), text, font=font_medium, fill="white")  # Text in white
 
-                # Highlight the selected item
-                if start_index + i == selected_index:
-                    draw.rectangle((0, y - padding, device.width, y + text_height + padding), outline="white", fill="white")
-                    draw.text((2, y), icon, font=font_icons, fill="black")  # Icon in black
-                    draw.text((icon_width + 5, y), text, font=font_medium, fill="black")  # Text in black
-                else:
-                    draw.text((2, y), icon, font=font_icons, fill="white")  # Icon in white
-                    draw.text((icon_width + 5, y), text, font=font_medium, fill="white")  # Text in white
+                # Draw navigation indicators
+                if selected_index > 0:
+                    draw.text((device.width // 2 + 50, device.height - 67), "▲", font=font_small, fill="white")
+                if selected_index < len(menu_items) - 1:
+                    draw.text((device.width // 2 + 50, device.height - 58), "▼", font=font_small, fill="white")
 
-            # Draw up/down arrows if needed
-            show_up_arrow = selected_index > 0  # Can scroll up
-            show_down_arrow = selected_index + max_visible_items < len(menu_items)  # Can scroll down
-
-            # Draw Up Arrow
-            if show_up_arrow:
-                draw.text((device.width // 2 + 50, device.height - 67), "▲", font=font_small, fill="white")
-
-            # Draw Down Arrow
-            if show_down_arrow:
-                draw.text((device.width // 2 + 50, device.height - 58), "▼", font=font_small, fill="white")
+            prev_index = selected_index
 
         # Handle button presses
         if button_up.is_pressed:
-            selected_index = (selected_index - 1) % len(menu_items)
+            selected_index = max(0, selected_index - 1)
             time.sleep(0.2)
-
-        if button_down.is_pressed:
-            selected_index = (selected_index + 1) % len(menu_items)
+        elif button_down.is_pressed:
+            selected_index = min(len(menu_items) - 1, selected_index + 1)
             time.sleep(0.2)
-
-        if button_select.is_pressed:
+        elif button_select.is_pressed:
+            # Save the current position before exiting
+            if menu_items == settings_menu_items:
+                last_settings_menu_index = selected_index
             time.sleep(0.2)
             return menu_items[selected_index]
-                # Add this to handle the right button press for help
-        time.sleep(0.1) # Reduce CPU Usage 
+        elif button_left.is_pressed:
+            # Save the current position before exiting
+            if menu_items == settings_menu_items:
+                last_settings_menu_index = selected_index
+            time.sleep(0.2)
+            return "\uf28d Back"  # Explicit return for back action
+
+        time.sleep(0.1)  # Reduce CPU usage
 
 def start_hostapd_service():
     """Start the hostapd service"""
@@ -1345,7 +1354,12 @@ def display_menu(menu, title="PurrfectBackup"):
 
 
 def navigate_menu(menu, title="PurrfectBackup"):
-    global selected_index
+    global selected_index, last_main_menu_index
+    
+    # Restore last position if coming back to main menu
+    if menu == menu_items:
+        selected_index = last_main_menu_index
+    
     prev_index = -1  # Store previous selection
     max_visible_items = 3  # Number of visible items
 
@@ -1361,11 +1375,13 @@ def navigate_menu(menu, title="PurrfectBackup"):
             selected_index = min(len(menu) - 1, selected_index + 1)
             time.sleep(0.2)
         elif button_select.is_pressed:
+            # Save position before leaving
+            if menu == menu_items:
+                last_main_menu_index = selected_index
             time.sleep(0.2)
             return menu[selected_index]
         elif button_right.is_pressed:  # Help button
             time.sleep(0.2)
-            #show_help(menu[selected_index])
 
         time.sleep(0.1)  # Reduce CPU usage
 
@@ -1872,26 +1888,31 @@ def main():
             disk_check_menu()
         elif choice == "\uf15c Copy History":
             copy_history_menu()  # Show Copy History menu
+ 
+
         elif choice == "\uf013 Settings":
-            settings_choice = navigate_menu_time(settings_menu_items)
-            if settings_choice == "\uf017 Set Time":
-                set_time_manually()
-            elif settings_choice == "\uf28d Shutdown":
-                os.system("sudo shutdown now")
-                with canvas(device) as draw:
-                    draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
-            elif settings_choice == "\uf021 Reboot":
-                os.system("sudo reboot")
-                with canvas(device) as draw:
-                    draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
-            elif settings_choice == "\uf28d Back":
-                continue
-            elif settings_choice == "\uf129 Version":
-                backup_data_version()
-            elif settings_choice == "\uf2f1 Factory Reset":
-                confirm_reset()
-            elif settings_choice == "\uf56d Update":
-                check_for_update()
+            while True:
+                settings_choice = navigate_menu_time(settings_menu_items)
+                if settings_choice == "\uf017 Set Time":
+                    set_time_manually()
+                elif settings_choice == "\uf28d Shutdown":
+                    os.system("sudo shutdown now")
+                    with canvas(device) as draw:
+                        draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+                elif settings_choice == "\uf021 Reboot":
+                    os.system("sudo reboot")
+                    with canvas(device) as draw:
+                        draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+                elif settings_choice == "\uf28d Back":
+                    break  # Exit settings menu loop and return to main menu
+                elif settings_choice == "\uf129 Version":
+                    backup_data_version()
+                elif settings_choice == "\uf2f1 Factory Reset":
+                    confirm_reset()
+                elif settings_choice == "\uf56d Update":
+                    check_for_update()
+
+
 
         elif choice == "System Menu":
             navigate_shutdown_menu()
