@@ -10,7 +10,7 @@
         padding: 2rem;
         border: 1px solid #ddd;
         border-radius: 8px;
-        background-color: #f9f9f9;
+        background-color: #e6f7ff;
         box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
     }
 
@@ -180,11 +180,13 @@
     /* Create Folder Box */
     .create-folder-box {
         padding: 1.5rem;
+        margin: 2rem auto;
         margin-top: 2rem;
         border: 1px solid #ddd;
         border-radius: 8px;
-        background-color: #f7f7f7;
+        background-color: #f0f8f0;
         box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        max-width: 800px;
     }
 
     body.dark-mode .create-folder-box {
@@ -201,6 +203,12 @@
     body.dark-mode .create-folder-box h3 {
         color: #f1f1f1;
     }
+
+    .folder-table td a.start-copy-btn {
+    display: block;
+    width: 100%;
+        }
+
 
     /* Table for displaying folders */
     .folder-table {
@@ -275,23 +283,19 @@
         <!-- Browse Table -->
     <h1>Browse Folders</h1>
     <table class="folder-table">
-        <thead>
-            <tr>
-                <th>Source Disk</th>
-                <th>Destination Disk</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td style="text-align: left;">
-                    <a href="{{ url_for('browse_folder', base_path='/mnt/usb/source', home_url=session['home_url']) }}" class="start-copy-btn">Src. Files</a>
-                </td>
-                <td style="text-align: left;">
-                    <a href="{{ url_for('browse_folder', base_path='/mnt/usb/destination', home_url=session['home_url']) }}" class="start-copy-btn">Dest. Files</a>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <tbody>
+        <tr>
+            <td style="text-align: center;">
+                <a href="{{ url_for('browse_folder', base_path='/mnt/usb/source', home_url=session['home_url']) }}" class="start-copy-btn">Source Files</a>
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: center;">
+                <a href="{{ url_for('browse_folder', base_path='/mnt/usb/destination', home_url=session['home_url']) }}" class="start-copy-btn">Destination Files</a>
+            </td>
+        </tr>
+    </tbody>
+</table>
 </div>
 <div class="form-container">
     <!-- Source Folders Table -->
@@ -448,8 +452,8 @@
     }
 
     .start-copy-btn {
-        padding: 10px 25px;
-        font-size: 1.2rem;
+        padding: 5px 15px;
+        font-size: 1.1rem;
         background-color: #007bff;
         color: white;
         border: none;
@@ -457,6 +461,7 @@
         cursor: pointer;
         text-decoration: none; /* Removes underline */
         transition: background-color 0.3s ease;
+        min-width: 100%;
     }
 
     .start-copy-btn:disabled {
@@ -472,7 +477,7 @@
     .create-folder-btn {
         padding: 8px 18px;
         font-size: 1rem;
-        background-color: #28a745;
+        background-color: #007bff;
         color: white;
         border: none;
         border-radius: 5px;
@@ -480,6 +485,7 @@
         transition: background-color 0.3s ease;
         width: auto;
         margin-top: 1rem;
+        min-width: 100%;
     }
 
     .create-folder-btn:disabled {
