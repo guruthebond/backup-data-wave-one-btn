@@ -82,13 +82,26 @@ def list_folders_and_files(directory):
                 size_gb = size / (1024 ** 3)
                 folders.append({'name': item, 'path': item_path, 'size': f"{size_gb:.2f} GB"})
             else:
-                file_size = os.path.getsize(item_path) / (1024 ** 2)  # Convert to MB
-                files.append({'name': item, 'size': f"{file_size:.2f} MB"})
+                file_size = os.path.getsize(item_path) / (1024 ** 2)  # MB
+                
+                # Get creation time (birth time) if available, fall back to modification time
+                try:
+                    file_stat = os.stat(item_path)
+                    file_ctime = file_stat.st_birthtime if hasattr(file_stat, 'st_birthtime') else file_stat.st_ctime
+                except AttributeError:
+                    # For systems that don't support st_birthtime (like some Linux filesystems)
+                    file_ctime = os.path.getctime(item_path)
+                
+                date_created = datetime.fromtimestamp(file_ctime).strftime("%Y-%m-%d %H:%M:%S")
+                files.append({
+                    'name': item,
+                    'size': f"{file_size:.2f} MB",
+                    'date': date_created  # Now shows creation date
+                })
     except Exception as e:
         logging.error(f"Error listing directory {directory}: {e}")
 
     return folders, files
-
 
 @app.route('/delete_folder', methods=['POST'])
 def delete_folder():
