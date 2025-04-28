@@ -125,7 +125,7 @@ def monitor(device, mode):
             stop_flag = "dst"
             break
 
-        time.sleep(0.2)
+        time.sleep(1)
 
 
 def rsync_file(device, srcp, destp, count, total, mode):
