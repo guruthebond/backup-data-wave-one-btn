@@ -43,6 +43,7 @@
                     <div class="file-item">
                         <span class="item-name">{{ file.name }}</span>
                         <span class="item-size">{{ file.size }}</span>
+                        <span class="item-date">{{ file.date }}</span> <!-- ADD THIS -->
                     </div>
                 </div>
             {% endfor %}
@@ -173,6 +174,18 @@
 
     .home-button:hover {
         background-color: #0056b3;
+    }
+    }
+        .item-date {
+        min-width: 140px;
+        text-align: right;
+        padding-left: 0.5rem;
+        font-size: 0.9rem;
+        color: #888;
+        font-style: italic;
+    }
+    body.dark-mode .item-date {
+        color: #ccc;
     }
 
     /* Responsive adjustments */
