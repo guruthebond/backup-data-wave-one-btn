@@ -1,5 +1,4 @@
-from copynow import copy_now
-from copynow_dated import copy_now_dated
+from copynow_combined import copy_mode
 import time
 import os
 import subprocess
@@ -1673,44 +1672,9 @@ def display_summary(source, dest):
         # Wait for Select button to proceed
         if button_select.is_pressed:
             time.sleep(0.2)  # Debounce
+            copy_mode(device, mode="just")
+            return
 
-            # Show Validate Data screen (same style as summary)
-            validate = "Yes"
-            #validate_options = ["No", "Yes"]
-            #validate_index = 0
-
-            #while True:
-            #    with canvas(device) as draw:
-            #        draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
-
-                    # Title Bar - Same style as summary
-            #        draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
-            #        draw.text((2, 1), "Validate Data", font=font_small, fill="black")
-
-             #       # Display source and destination (matching summary layout)
-             #       draw.text((2, 20), f"Validate exsisting", font=font_medium, fill="white")
-             #       draw.text((2, 35), f"files on dest.?", font=font_medium, fill="white")
-#
-#                    # Show validation selection with highlight
-#                    draw.text((10, 50), f"> {validate_options[validate_index]}", font=font_medium, fill="white")
-#
-#                if button_up.is_pressed:
-#                    validate_index = (validate_index - 1) % len(validate_options)
-#                    time.sleep(0.2)
-#                elif button_down.is_pressed:
-#                    validate_index = (validate_index + 1) % len(validate_options)
-#                    time.sleep(0.2)
-#                elif button_select.is_pressed:
-#                    validate = validate_options[validate_index]  # Store validation choice
-#                    break
-#                elif button_left.is_pressed:
-#                    time.sleep(0.2)
-#                    return None
-
-            # Call Just Copy function with validation parameter
-            copy_now(device, validate)
-            break  # Exit the while loop after executing the copy command
-        
         time.sleep(0.1)  # Avoid High CPU usage
 
 
@@ -1748,43 +1712,8 @@ def display_summary_dated(source, dest):
         #Wait for Select button to proceed
         if button_select.is_pressed:
             time.sleep(0.2)  # Debounce
-#
-            # Show Validate Data screen (same style as summary)
-            validate = "Yes"
-           # validate_options = ["No", "Yes"]
-           # validate_index = 0
-
-            #while True:
-           #     with canvas(device) as draw:
-           #         draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
-#
-#                    # Title Bar - Same style as summary
-#                    draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
-#                    draw.text((2, 1), "Validate Data", font=font_small, fill="black")
-#
-#                    # Display source and destination (matching summary layout)
-#                    draw.text((2, 20), f"Validate exsisting", font=font_medium, fill="white")
-#                    draw.text((2, 35), f"files on dest.?", font=font_medium, fill="white")
-#
-#                    # Show validation selection with highlight
-#                    draw.text((10, 50), f"> {validate_options[validate_index]}", font=font_medium, fill="white")
-#
-#                if button_up.is_pressed:
-#                    validate_index = (validate_index - 1) % len(validate_options)
-#                    time.sleep(0.2)
-#                elif button_down.is_pressed:
-#                    validate_index = (validate_index + 1) % len(validate_options)
-#                    time.sleep(0.2)
-#                elif button_select.is_pressed:
-#                    validate = validate_options[validate_index]  # Store validation choice
-#                    break
-#                elif button_left.is_pressed:
-#                    time.sleep(0.2)
-#                    return None
-
-            # Call Just Copy function with validation parameter
-            copy_now_dated(device, validate)
-            break  # Exit the while loop after executing the copy command
+            copy_mode(device, mode="dated")
+            return
         
         time.sleep(0.1)  # Avoid High CPU usage
 
@@ -1812,7 +1741,8 @@ def main():
             result = display_summary(source, dest) 
             if result == "Back to Main Menu":
                 continue  # Return to the beginning of the main loop
-            # Execute copy command here (e.g., os.system('rsync -av /mnt/src/ /mnt/dst/')) 
+            # Execute copy command here (e.g., os.system('rsync -av /mnt/src/ /mnt/dst/'))
+            #copy_mode(device, mode="just")
             unmount_partition("/mnt/src")
             unmount_partition("/mnt/dst")
         elif choice == "\uf133 Dated Copy":
@@ -1834,6 +1764,7 @@ def main():
             result = display_summary_dated(source, dest) 
             if result == "Back to Main Menu":
                 continue  # Return to the beginning of the main loop
+            #copy_mode(device, mode="dated")
             unmount_partition("/mnt/src")
             unmount_partition("/mnt/dst")
             #display_summary_dated(source, dest)
