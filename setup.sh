@@ -27,6 +27,9 @@ echo "usb_max_current_enable=1" | sudo tee -a /boot/firmware/config.txt
 echo "Adding SPI module to load at boot..."
 echo "spi-dev" | sudo tee -a /etc/modules
 #echo "i2c-dev" |sudo tee -a /etc/modules
+#Copy Performance Tuning 
+sudo sed -i 's/$/ pcie_aspm=performance/' /boot/firmware/cmdline.txt
+echo 'io_is_busy=1' | sudo tee -a /boot/firmware/config.txt
 
 # Display control commands
 echo "Configuring display settings..."
