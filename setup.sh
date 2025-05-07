@@ -30,6 +30,7 @@ echo "spi-dev" | sudo tee -a /etc/modules
 #Copy Performance Tuning 
 #sudo sed -i 's/$/ pcie_aspm=performance/' /boot/firmware/cmdline.txt
 echo 'io_is_busy=1' | sudo tee -a /boot/firmware/config.txt
+echo -e '\ndtoverlay=rpi-active-cooler\ndtparam=fan_temp0=60000,fan_temp1=65000,fan_temp2=70000,fan_temp3=75000' | sudo tee -a /boot/firmware/config.txt
 
 # Display control commands
 echo "Configuring display settings..."
