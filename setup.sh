@@ -227,14 +227,14 @@ else
 fi
 
 # Ensure maximum CPU speed
-echo "Enabling ARM boost for maximum CPU speed..."
-if grep -q "^arm_boost=" /boot/firmware/config.txt; then
-    sudo sed -i 's/^arm_boost=.*/arm_boost=1/' /boot/firmware/config.txt
-    echo "Updated: arm_boost=1"
-else
-    echo "arm_boost=1" | sudo tee -a /boot/firmware/config.txt
-    echo "Added: arm_boost=1"
-fi
+#echo "Enabling ARM boost for maximum CPU speed..."
+#if grep -q "^arm_boost=" /boot/firmware/config.txt; then
+#    sudo sed -i 's/^arm_boost=.*/arm_boost=1/' /boot/firmware/config.txt
+#    echo "Updated: arm_boost=1"
+#else
+#    echo "arm_boost=1" | sudo tee -a /boot/firmware/config.txt
+#    echo "Added: arm_boost=1"
+#fi
 
 # Update boot parameters
 echo "Updating /boot/firmware/cmdline.txt with optimized parameters..."
