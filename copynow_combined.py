@@ -176,6 +176,21 @@ def rsync_file(device, srcp, destp, count, total, mode):
     return rsync_proc.returncode
 
 
+def compare_files(src_files, dst_files):
+    """Compare source and destination files, return duplicates and new files"""
+    src_names = {os.path.basename(f[0]) for f in src_files}
+    dst_names = {os.path.basename(f[1]) for f in dst_files}
+
+    duplicates = src_names & dst_names
+    new_files = src_names - dst_names
+
+    return duplicates, new_files
+
+def create_timestamped_filename(src_path):
+    """Create a timestamped filename for duplicates (MM-DD-YYYY-HH-MM format)"""
+    base, ext = os.path.splitext(os.path.basename(src_path))
+    timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(src_path)).strftime("%m-%d-%Y-%H-%M")
+    return f"{base}-{timestamp}{ext}"  # Changed from [timestamp] to -timestamp
 
 def copy_mode(device, mode):
     global stop_flag
@@ -185,7 +200,7 @@ def copy_mode(device, mode):
     if not os.path.ismount(DST_ROOT):
         stop_flag = "dst"
         display_progress(device, 100, "DST DISCONNECTED", 0, 0, mode)
-        time.sleep(3)  # Wait for user to notice the message
+        time.sleep(3)
         return
 
     if not check_mounts(device):
@@ -193,7 +208,8 @@ def copy_mode(device, mode):
     if not check_space(device, SRC, dst, mode):
         return
 
-    all_files = []
+    # First gather all source files
+    src_files = []
     for root, dirs, files in os.walk(SRC):
         dirs[:] = [d for d in dirs if not d.startswith('.')]
         for f in files:
@@ -204,13 +220,48 @@ def copy_mode(device, mode):
                 rel = os.path.relpath(root, SRC)
                 destp = os.path.join(dst, rel, f)
             else:
-                date = datetime.datetime.fromtimestamp(
-                        os.path.getmtime(srcp)).strftime("%m-%d-%Y")
+                date = datetime.datetime.fromtimestamp(os.path.getmtime(srcp)).strftime("%m-%d-%Y")
                 destp = os.path.join(dst, date, f)
-            # Log source and destination paths
-            all_files.append((srcp, destp))
+            src_files.append((srcp, destp))
 
-    total = len(all_files)
+    # In just mode, we need to compare with existing files
+    if mode == 'just':
+        # Gather existing destination files
+        dst_files = []
+        if os.path.exists(dst):
+            for root, dirs, files in os.walk(dst):
+                dirs[:] = [d for d in dirs if not d.startswith('.')]
+                for f in files:
+                    if f.startswith('.'):
+                        continue
+                    destp = os.path.join(root, f)
+                    dst_files.append((None, destp))  # We only care about destination paths
+
+        # Compare files
+        duplicates, new_files = compare_files(src_files, dst_files)
+        
+        # Process files - this will modify src_files to include timestamped names for duplicates
+        processed_files = []
+        for srcp, destp in src_files:
+            filename = os.path.basename(srcp)
+            if filename in duplicates:
+                # For duplicates, check if we need to create timestamped version
+                if (os.path.exists(destp) and
+                    (os.path.getsize(destp) != os.path.getsize(srcp) or 
+                    os.path.getmtime(destp) < os.path.getmtime(srcp))):
+                    # Files are different, create timestamped version
+                    new_dest = os.path.join(
+                        os.path.dirname(destp),
+                        create_timestamped_filename(srcp)
+                    )
+                    processed_files.append((srcp, new_dest))
+            elif filename in new_files:
+                # New files can be copied normally
+                processed_files.append((srcp, destp))
+        
+        src_files = processed_files
+
+    total = len(src_files)
     if total == 0:
         display_progress(device, 100, "", 0, 0, mode)
         time.sleep(1)
@@ -225,30 +276,28 @@ def copy_mode(device, mode):
     data_copied = 0
     count = 0
 
-    for srcp, destp in all_files:
+    for srcp, destp in src_files:
         if stop_flag:
             break
 
-        # Check if source still exists before accessing it
         if not os.path.exists(srcp):
             stop_flag = "src"
-            actual_copied = sum(1 for f in all_files[:all_files.index((srcp, destp))] 
-                           if os.path.exists(f[0]))
+            actual_copied = sum(1 for f in src_files[:src_files.index((srcp, destp))] 
+                       if os.path.exists(f[0]))
             count = actual_copied
             break
         
-        # Check if source is mounted (if it's a mountable device)
         if not os.path.ismount(SRC):
             stop_flag = "src"
-            actual_copied = sum(1 for f in all_files[:all_files.index((srcp, destp))] 
-                           if os.path.exists(f[0]))
+            actual_copied = sum(1 for f in src_files[:src_files.index((srcp, destp))] 
+                       if os.path.exists(f[0]))
             count = actual_copied
             break
 
         if not os.path.ismount(DST_ROOT):
             stop_flag = "dst"
-            actual_copied = sum(1 for f in all_files[:all_files.index((srcp, destp))] 
-                                if os.path.exists(f[0]))
+            actual_copied = sum(1 for f in src_files[:src_files.index((srcp, destp))] 
+                            if os.path.exists(f[0]))
             count = actual_copied
             break
 
@@ -266,7 +315,6 @@ def copy_mode(device, mode):
             if stop_flag or not os.path.ismount(DST_ROOT):
                 stop_flag = "dst"
                 break
-            # Ensure destination folder exists and check for I/O errors
             try:
                 os.makedirs(os.path.dirname(destp), exist_ok=True)
             except OSError as e:
@@ -289,7 +337,7 @@ def copy_mode(device, mode):
     dur_s = f"{mins}m{secs}s"
 
     if stop_flag == "src":
-        actual_copied = sum(1 for srcp, _ in all_files[:count] if os.path.exists(srcp))
+        actual_copied = sum(1 for srcp, _ in src_files[:count] if os.path.exists(srcp))
         log_to_csv(start_s, end.strftime("%Y-%m-%d %H:%M"), 
                  bytes_to_human(data_copied), dur_s, "Src Lost!")
         display_progress(device, 100, "SRC LOST!", actual_copied, total, mode)
@@ -299,7 +347,7 @@ def copy_mode(device, mode):
         time.sleep(3)
         return
     elif stop_flag == "dst":
-        actual_copied = sum(1 for srcp, _ in all_files[:count] if os.path.exists(srcp))
+        actual_copied = sum(1 for srcp, _ in src_files[:count] if os.path.exists(srcp))
         log_to_csv(start_s, end.strftime("%Y-%m-%d %H:%M"),
                    bytes_to_human(data_copied), dur_s, "Dst Lost!")
         display_progress(device, 100, "DST LOST!", actual_copied, total, mode)
@@ -310,24 +358,17 @@ def copy_mode(device, mode):
         return
     else:
         log_to_csv(start_s, end.strftime("%Y-%m-%d %H:%M"), bytes_to_human(data_copied), dur_s, "Success")
-        # Check the mode and import the corresponding report
+        with canvas(device) as draw:
+            draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
+        with canvas(device) as draw:
+            draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
+            draw.text((6, device.height // 2 - 20), "Report Creation", font=FONT, fill="white")
+            draw.text((6, device.height // 2), f"Please wait...", font=FONT, fill="white")
         if mode == 'just':
             import report
-            with canvas(device) as draw:
-                draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
-            with canvas(device) as draw:
-                draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
-                draw.text((6, device.height // 2 - 20), "Report Creation", font=FONT, fill="white")
-                draw.text((6, device.height // 2), f"Please wait...", font=FONT, fill="white")
             report.generate_reports()
-        elif mode == 'dated':
+        else:  # dated mode
             import report_dated
-            with canvas(device) as draw:
-                draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
-            with canvas(device) as draw:
-                draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
-                draw.text((6, device.height // 2 - 20), "Report Creation", font=FONT, fill="white")
-                draw.text((6, device.height // 2), f"Please wait...", font=FONT, fill="white")
             report_dated.generate_reports()
         time.sleep(2)
         with canvas(device) as draw:
@@ -335,7 +376,6 @@ def copy_mode(device, mode):
             draw.text((10, 20), "Copy Done!", font=FONT, fill="white")
             draw.text((10, 40), f"{count}/{total} files", font=SMALL_FONT, fill="white")
         time.sleep(2)
-
 
 def main():
     parser = argparse.ArgumentParser()
