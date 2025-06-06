@@ -281,6 +281,14 @@ def mount():
 
         subprocess.run(['mount', source, '/mnt/usb/source'], check=True)
         subprocess.run(['mount', destination, '/mnt/usb/destination'], check=True)
+        # Get partition labels
+        partitions = get_available_partitions()
+        source_label = next((p['label'] for p in partitions if p['name'] == source), "No Label")
+        destination_label = next((p['label'] for p in partitions if p['name'] == destination), "No Label")
+
+        # Store labels in session
+        session['source_label'] = source_label
+        session['destination_label'] = destination_label
 
         status = f"Successfully mounted {source} to /mnt/usb/source and {destination} to /mnt/usb/destination."
         source_folders = list_folders_with_sizes('/mnt/usb/source')
@@ -300,7 +308,16 @@ def folder_selection():
     # Store the first generated URL in session, if not already set
     if 'home_url' not in session:
         session['home_url'] = request.url  # Store the initial URL
-    return render_template('folder.html', source_folders=source_folders, destination_folders=destination_folders)
+
+    # Get labels from session with fallback
+    source_label = session.get('source_label', 'No Label')
+    destination_label = session.get('destination_label', 'No Label')
+    return render_template('folder.html',
+                           source_folders=source_folders,
+                           destination_folders=destination_folders,
+                           source_label=source_label,
+                           destination_label=destination_label)
+
 
 
 import os
