@@ -81,11 +81,38 @@ def get_file_mod_date(file_path):
     return datetime.fromtimestamp(os.path.getmtime(file_path)).strftime("%Y-%m-%d %H:%M:%S")
 
 # Helper function to recursively search for a file in the destination directory
-def find_file_in_dst(file_name, dst_dir):
+
+def find_file_in_dst(file_name, src_root, dst_dir):
+    base_name, ext = os.path.splitext(file_name)
+    timestamped_versions = []
+    exact_match = None
+
+    # Get source file's full path and modification time
+    src_path = os.path.join(src_root, file_name)
+    try:
+        src_mtime = os.path.getmtime(src_path)
+    except FileNotFoundError:
+        return None  # Source file doesn't exist
+
     for root, _, files in os.walk(dst_dir):
-        if file_name in files:
-            return os.path.join(root, file_name)
-    return None
+        for f in files:
+            file_path = os.path.join(root, f)
+            # Collect all timestamped versions
+            if f.startswith(base_name + "-") and f.endswith(ext):
+                timestamped_versions.append(file_path)
+            # Track exact match
+            elif f == file_name:
+                exact_match = file_path
+
+    # Prioritize timestamped versions over exact matches
+    if timestamped_versions:
+        # Find the timestamped version with matching modification time
+        for version in timestamped_versions:
+            if os.path.getmtime(version) == src_mtime:
+                return version
+        return timestamped_versions[0]  # Fallback to first timestamped version
+
+    return exact_match  # Return exact match if no timestamped versions exist
 
 
 # New function to generate the HTML template with sorting and pagination
@@ -602,7 +629,7 @@ def get_file_data_json():
         files = [f for f in files if not f.startswith('.')]
         for file in files:
             src_file_path = os.path.join(root, file)
-            dst_file_path = find_file_in_dst(file, DST_DIR)
+            dst_file_path = find_file_in_dst(file, root, DST_DIR)
             
             file_data.append({
                 'name': file,
@@ -632,7 +659,7 @@ def generate_comparison_report(comparison_file):
         files = [f for f in files if not f.startswith('.')]
         for file in files:
             src_file_path = os.path.join(root, file)
-            dst_file_path = find_file_in_dst(file, DST_DIR)
+            dst_file_path = find_file_in_dst(file, root, DST_DIR)
             
             file_data.append({
                 'name': file,
