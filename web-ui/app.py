@@ -10,6 +10,9 @@ from datetime import datetime
 import shutil
 from flask import Flask, session  # Import session
 from flask_session import Session  # Import Flask-Session for better handling
+from flask import send_file
+import tempfile
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -44,6 +47,66 @@ LOG_DIR = 'log'  # Update with the actual log directory path
 #    except Exception as e:
 #        return f"Error listing logs: {str(e)}"
 
+@app.route('/preview_raw')
+def preview_raw():
+    file_path = request.args.get('file')
+
+    if not file_path.startswith('/mnt/usb/source/') and not file_path.startswith('/mnt/usb/destination/'):
+        return "Access denied", 403
+    if not os.path.exists(file_path):
+        return "File not found", 404
+
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+            temp_path = temp_file.name
+
+        # Try PreviewImage first
+        result = subprocess.run(
+            ['exiftool', '-b', '-PreviewImage', file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        if result.stdout:
+            with open(temp_path, 'wb') as f:
+                f.write(result.stdout)
+            return send_file(temp_path, mimetype='image/jpeg')
+
+        # Fallback to JpgFromRaw
+        result = subprocess.run(
+            ['exiftool', '-b', '-JpgFromRaw', file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        if result.stdout:
+            with open(temp_path, 'wb') as f:
+                f.write(result.stdout)
+            return send_file(temp_path, mimetype='image/jpeg')
+
+        return "No preview available", 404
+
+    except Exception as e:
+        return f"Error generating preview: {str(e)}", 500
+
+    finally:
+        try:
+            if temp_path and os.path.exists(temp_path):
+                os.unlink(temp_path)
+        except:
+            pass
+
+@app.route('/preview_image')
+def preview_image():
+    file_path = request.args.get('file')
+    
+    # Security check - ensure the path is within our allowed directories
+    if not file_path.startswith('/mnt/usb/source/') and not file_path.startswith('/mnt/usb/destination/'):
+        return "Access denied", 403
+    
+    if not os.path.exists(file_path):
+        return "File not found", 404
+    
+    return send_file(file_path)
 
 @app.route('/browse_folder', methods=['GET'])
 def browse_folder():
