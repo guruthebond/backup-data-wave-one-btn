@@ -208,6 +208,24 @@ def copy_mode(device, mode):
     if not check_space(device, SRC, dst, mode):
         return
 
+    # Helper function to check for duplicate files in directory
+    def has_duplicate_file(directory, target_size, target_mtime, exclude=None):
+        if not os.path.exists(directory):
+            return False
+        for fname in os.listdir(directory):
+            if exclude and fname == exclude:
+                continue
+            fpath = os.path.join(directory, fname)
+            if os.path.isfile(fpath):
+                try:
+                    fsize = os.path.getsize(fpath)
+                    fmtime = os.path.getmtime(fpath)
+                    if fsize == target_size and fmtime == target_mtime:
+                        return True
+                except OSError:
+                    continue
+        return False
+
     # First gather all source files
     src_files = []
     for root, dirs, files in os.walk(SRC):
@@ -223,43 +241,6 @@ def copy_mode(device, mode):
                 date = datetime.datetime.fromtimestamp(os.path.getmtime(srcp)).strftime("%m-%d-%Y")
                 destp = os.path.join(dst, date, f)
             src_files.append((srcp, destp))
-
-    # In just mode, we need to compare with existing files
-    if mode == 'just':
-        # Gather existing destination files
-        dst_files = []
-        if os.path.exists(dst):
-            for root, dirs, files in os.walk(dst):
-                dirs[:] = [d for d in dirs if not d.startswith('.')]
-                for f in files:
-                    if f.startswith('.'):
-                        continue
-                    destp = os.path.join(root, f)
-                    dst_files.append((None, destp))  # We only care about destination paths
-
-        # Compare files
-        duplicates, new_files = compare_files(src_files, dst_files)
-        
-        # Process files - this will modify src_files to include timestamped names for duplicates
-        processed_files = []
-        for srcp, destp in src_files:
-            filename = os.path.basename(srcp)
-            if filename in duplicates:
-                # For duplicates, check if we need to create timestamped version
-                if (os.path.exists(destp) and
-                    (os.path.getsize(destp) != os.path.getsize(srcp) or 
-                    os.path.getmtime(destp) < os.path.getmtime(srcp))):
-                    # Files are different, create timestamped version
-                    new_dest = os.path.join(
-                        os.path.dirname(destp),
-                        create_timestamped_filename(srcp)
-                    )
-                    processed_files.append((srcp, new_dest))
-            elif filename in new_files:
-                # New files can be copied normally
-                processed_files.append((srcp, destp))
-        
-        src_files = processed_files
 
     total = len(src_files)
     if total == 0:
@@ -302,12 +283,45 @@ def copy_mode(device, mode):
             break
 
         count += 1
-        if (os.path.exists(destp) and
-            os.path.getsize(destp) == os.path.getsize(srcp) and
-            os.path.getmtime(destp) >= os.path.getmtime(srcp)):
+        
+        # Get source file attributes
+        try:
+            src_size = os.path.getsize(srcp)
+            src_mtime = os.path.getmtime(srcp)
+        except OSError:
+            action = 'Skip'
+            display_progress(device, (count/total)*100, srcp, count, total, mode, action=action)
+            continue
+            
+        dest_dir = os.path.dirname(destp)
+        dest_file = os.path.basename(destp)
+        
+        # Check for existing file with same content
+        if has_duplicate_file(dest_dir, src_size, src_mtime):
             action = 'Skip'
         else:
-            action = 'Copy'
+            # Check if original destination exists and is different
+            if os.path.exists(destp):
+                try:
+                    dst_size = os.path.getsize(destp)
+                    dst_mtime = os.path.getmtime(destp)
+                    if dst_size == src_size and dst_mtime == src_mtime:
+                        action = 'Skip'
+                    else:
+                        # Generate unique filename
+                        base, ext = os.path.splitext(dest_file)
+                        timestamp = datetime.datetime.fromtimestamp(src_mtime).strftime("%m-%d-%Y-%H-%M")
+                        new_file = f"{base}-{timestamp}{ext}"
+                        counter = 1
+                        while os.path.exists(os.path.join(dest_dir, new_file)):
+                            new_file = f"{base}-{timestamp}-{counter}{ext}"
+                            counter += 1
+                        destp = os.path.join(dest_dir, new_file)
+                        action = 'Copy'
+                except OSError:
+                    action = 'Copy'
+            else:
+                action = 'Copy'
 
         display_progress(device, (count/total)*100, srcp, count, total, mode, action=action)
 
