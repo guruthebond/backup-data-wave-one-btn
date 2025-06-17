@@ -183,6 +183,58 @@ def logs():
         return f"Error listing logs: {str(e)}"
 
 
+@app.route('/report')
+def report():
+    try:
+        # Set the log directory to your static folder's oled_log subdirectory
+        LOG_DIR = os.path.join(app.root_path, 'static', 'oled_log')
+        log_entries = {}
+
+        for filename in os.listdir(LOG_DIR):
+            if not filename.endswith(".html"):
+                continue
+            
+            parts = filename.split("_")
+            if len(parts) < 3:
+                continue
+            
+            # Combine the first two parts (YYYYMMDD and HHMMSS) with an underscore
+            timestamp_str = parts[0] + "_" + parts[1]
+            try:
+                log_datetime = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S")
+                human_readable_date = log_datetime.strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue
+            
+            # Extract log type from the third part (e.g., "src", "dst", "comparison")
+            log_type = parts[2].split(".")[0]
+            if timestamp_str not in log_entries:
+                log_entries[timestamp_str] = {
+                    "datetime": human_readable_date,
+                    "src": None,
+                    "dst": None,
+                    "comparison": None,
+                    "type": None  # New field for type
+                }
+            
+            if log_type == "src":
+                log_entries[timestamp_str]["src"] = filename
+            elif log_type == "dst":
+                log_entries[timestamp_str]["dst"] = filename
+            elif log_type == "comparison":
+                log_entries[timestamp_str]["comparison"] = filename
+                # Extract type from the comparison file
+                comp_file_path = os.path.join(LOG_DIR, filename)
+                log_entries[timestamp_str]["type"] = extract_log_type(comp_file_path)
+
+        # Convert dictionary to list and sort by datetime descending (latest on top)
+        log_files = sorted(log_entries.values(), key=lambda x: x["datetime"], reverse=True)
+
+        return render_template('report.html', logs=log_files)
+
+    except Exception as e:
+        return f"Error listing logs: {str(e)}"
+
 @app.route('/view_log')
 def view_log():
     log_path = request.args.get('path')
@@ -195,8 +247,6 @@ def view_log():
     
     except Exception as e:
         return f"Error reading log: {str(e)}"
-
-
 
 
 def get_available_partitions():
