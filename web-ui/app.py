@@ -47,11 +47,58 @@ LOG_DIR = 'log'  # Update with the actual log directory path
 #    except Exception as e:
 #        return f"Error listing logs: {str(e)}"
 
+@app.route('/chkfiles')
+def check_files():
+    partitions = get_available_partitions()
+    return render_template('checkfiles.html', partitions=partitions)
+
+@app.route('/mount_check', methods=['POST'])
+def mount_check_drive():
+    drive = request.form['drive']
+
+    try:
+        if os.path.ismount('/mnt/usb/check'):
+            subprocess.run(['umount', '/mnt/usb/check'], check=True)
+
+        subprocess.run(['mount', drive, '/mnt/usb/check'], check=True)
+        return redirect(url_for('browse_check_folder', current_path='/mnt/usb/check'))
+    except subprocess.CalledProcessError as e:
+        return f"Failed to mount: {str(e)}", 400
+
+@app.route('/browse_check')
+def browse_check_folder():
+    current_path = request.args.get('current_path', '/mnt/usb/check')
+
+    # Prevent accessing outside the check folder
+    if not current_path.startswith('/mnt/usb/check'):
+        current_path = '/mnt/usb/check'
+
+    # Get folder contents
+    folders, files = list_folders_and_files(current_path)
+
+    # Determine parent folder (if not at root)
+    parent_folder = None
+    if current_path != '/mnt/usb/check':
+        parent_folder = os.path.dirname(current_path)
+
+    display_path = current_path.replace('/mnt/usb/check', '')
+    return render_template('checkfiles.html',
+                         current_path=current_path,
+                         display_path=display_path if display_path else '/',
+                         folders=folders,
+                         files=files,
+                         parent_folder=parent_folder,
+                         partitions=get_available_partitions())
+
 @app.route('/preview_raw')
 def preview_raw():
     file_path = request.args.get('file')
 
-    if not file_path.startswith('/mnt/usb/source/') and not file_path.startswith('/mnt/usb/destination/'):
+    if not (
+        file_path.startswith('/mnt/usb/source/')
+        or file_path.startswith('/mnt/usb/destination/')
+        or file_path.startswith('/mnt/usb/check/')
+    ):
         return "Access denied", 403
     if not os.path.exists(file_path):
         return "File not found", 404
