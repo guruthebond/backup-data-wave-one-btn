@@ -10,8 +10,10 @@ sudo apt update -y && sudo apt upgrade -y
 
 # Install required packages
 echo "Installing required packages..."
-echo "Packages being installed: libopenjp2-7 git vim python3-pip hostapd dnsmasq ddcutil"
-sudo apt-get install -y libopenjp2-7 git vim python3-pip hostapd dnsmasq ddcutil  
+echo "Packages being installed: libopenjp2-7 git vim python3-pip hostapd dnsmasq ddcutil exiftool"
+sudo apt-get install -y libopenjp2-7 git vim python3-pip hostapd dnsmasq ddcutil libimage-exiftool-perl
+
+echo "ExifTool installed for RAW to JPG preview extraction."
 
 # Enable I2C and disable USB current limit
 echo "Configuring system for SPI and USB current limits..."
