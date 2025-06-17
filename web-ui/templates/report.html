@@ -1,0 +1,147 @@
+{% extends "base_report.html" %}
+{% block content %}
+<style>
+/* Heading styling matching progress.html */
+h1 {
+    margin: 2rem auto;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #333;
+    background-color: #fff;
+    padding: 0.5rem;
+    border-radius: 8px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+}
+body.dark-mode h1 {
+    color: #f1f1f1;
+    background-color: #444;
+}
+
+/* Responsive container for the table */
+.table-container {
+    overflow-x: auto;
+}
+
+/* Table styling */
+.log-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+.log-table th, .log-table td {
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+.log-table th {
+    background-color: #f2f2f2;
+    font-weight: 600;
+}
+.log-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+.log-table tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+/* Dark mode styling */
+body.dark-mode .log-table th {
+    background-color: #444;
+    color: #f1f1f1;
+}
+body.dark-mode .log-table td {
+    color: #f1f1f1;
+    border-bottom: 1px solid #555;
+}
+body.dark-mode .log-table tr:nth-child(even) {
+    background-color: #333;
+}
+body.dark-mode .log-table tr:nth-child(odd) {
+    background-color: #2a2a2a;
+}
+
+/* Button styling */
+.log-btn {
+    display: inline-block;
+    padding: 4px 8px;
+    margin: 2px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+.log-btn:hover {
+    background-color: #0056b3;
+}
+body.dark-mode .log-btn {
+    background-color: #1e90ff;
+    color: #fff;
+}
+body.dark-mode .log-btn:hover {
+    background-color: #1c86ee;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 600px) {
+    .log-table th, .log-table td {
+        padding: 8px;
+        font-size: 0.8rem;
+    }
+    .log-btn {
+        padding: 3px 6px;
+        font-size: 0.75rem;
+    }
+}
+</style>
+
+<h1>Reports [Copy History]</h1>
+<div class="table-container">
+    <table class="log-table">
+        <thead>
+            <tr>
+                <th>Date/Time</th>
+                <th>Source</th>
+                <th>Dest.</th>
+                <th>Compare</th>
+                <th>Type</th> <!-- New column header -->
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.datetime }}</td>
+                <td>
+                    {% if log.src %}
+                    <a href="{{ url_for('static', filename='oled_log/' + log.src) }}" class="log-btn">Source</a>
+                    {% else %}
+                    <button class="log-btn" disabled>N/A</button>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.dst %}
+                    <a href="{{ url_for('static', filename='oled_log/' + log.dst) }}" class="log-btn">Dest.</a>
+                    {% else %}
+                    <button class="log-btn" disabled>N/A</button>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.comparison %}
+                    <a href="{{ url_for('static', filename='oled_log/' + log.comparison) }}" class="log-btn">Compare</a>
+                    {% else %}
+                    <button class="log-btn" disabled>N/A</button>
+                    {% endif %}
+                </td>
+                <td>
+                    {{ log.type }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
