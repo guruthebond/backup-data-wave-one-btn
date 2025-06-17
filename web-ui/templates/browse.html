@@ -5,7 +5,6 @@
 {% block content %}
 {% set display_path = current_path.replace('/mnt/usb', '') %}
 
-
 <div class="browse-container">
     <h1>Browse: {{ display_path if display_path else '/' }}</h1>
 
@@ -40,11 +39,11 @@
         <div class="items-list">
             {% for file in files %}
                 <div class="item-row">
-                    <div class="file-item">
+                    <a href="#" class="item-link file-item" onclick="previewFile('{{ current_path }}/{{ file.name }}')">
                         <span class="item-name">{{ file.name }}</span>
                         <span class="item-size">{{ file.size }}</span>
-                        <span class="item-date">{{ file.date }}</span> <!-- ADD THIS -->
-                    </div>
+                        <span class="item-date">{{ file.date }}</span>
+                    </a>
                 </div>
             {% endfor %}
         </div>
@@ -55,6 +54,18 @@
         <a href="{{ request.args.get('home_url', session.get('home_url', url_for('folder_selection'))) }}" class="nav-button home-button">
             Back to Home
         </a>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="previewModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeModal()">&times;</span>
+        <h2 id="previewFileName"></h2>
+        <div class="preview-container">
+            <img id="previewImage" style="max-width: 100%; max-height: 80vh;">
+            <div id="rawPreviewInfo"></div>
+        </div>
     </div>
 </div>
 
@@ -110,6 +121,7 @@
         width: 100%;
         text-decoration: none;
         color: inherit;
+        cursor: pointer;
     }
 
     .item-name {
@@ -136,6 +148,14 @@
 
     .folder-item:hover {
         text-decoration: underline;
+    }
+
+    .file-item:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+
+    body.dark-mode .file-item:hover {
+        background-color: rgba(77, 166, 255, 0.1);
     }
 
     .nav-buttons {
@@ -175,8 +195,8 @@
     .home-button:hover {
         background-color: #0056b3;
     }
-    }
-        .item-date {
+
+    .item-date {
         min-width: 140px;
         text-align: right;
         padding-left: 0.5rem;
@@ -184,8 +204,57 @@
         color: #888;
         font-style: italic;
     }
+
     body.dark-mode .item-date {
         color: #ccc;
+    }
+
+    /* Modal styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 900px;
+        position: relative;
+    }
+
+    body.dark-mode .modal-content {
+        background-color: #333;
+        color: #f1f1f1;
+    }
+
+    .close-button {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close-button:hover {
+        color: #000;
+    }
+
+    body.dark-mode .close-button:hover {
+        color: #fff;
+    }
+
+    .preview-container {
+        margin-top: 20px;
+        text-align: center;
     }
 
     /* Responsive adjustments */
@@ -225,6 +294,66 @@
             font-size: 0.9rem;
             min-width: 100px;
         }
+
+        .modal-content {
+            width: 95%;
+            margin: 10% auto;
+        }
     }
 </style>
+
+<script>
+    function previewFile(filePath) {
+        const modal = document.getElementById('previewModal');
+        const fileNameDisplay = document.getElementById('previewFileName');
+        const previewImage = document.getElementById('previewImage');
+        const rawPreviewInfo = document.getElementById('rawPreviewInfo');
+
+        // Display the file name
+        fileNameDisplay.textContent = filePath.split('/').pop();
+        
+        // Check if it's a RAW file (add more extensions as needed)
+        const rawExtensions = ['.cr2', '.cr3', '.nef', '.arw', '.dng', '.raf', '.orf', '.rw2'];
+        const fileExt = filePath.toLowerCase().substring(filePath.lastIndexOf('.'));
+        
+        if (rawExtensions.includes(fileExt)) {
+            // It's a RAW file - we'll use exiftool to extract preview
+            rawPreviewInfo.innerHTML = '<p>Loading RAW preview...</p>';
+            
+            fetch('/preview_raw?file=' + encodeURIComponent(filePath))
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    previewImage.src = url;
+                    rawPreviewInfo.innerHTML = '';
+                })
+                .catch(error => {
+                    rawPreviewInfo.innerHTML = '<p>Could not load RAW preview. This file type might not be supported.</p>';
+                    console.error('Error:', error);
+                });
+        } else if (fileExt === '.jpg' || fileExt === '.jpeg' || fileExt === '.png' || fileExt === '.gif') {
+            // It's a regular image - display directly
+            previewImage.src = '/preview_image?file=' + encodeURIComponent(filePath);
+            rawPreviewInfo.innerHTML = '';
+        } else {
+            // Not a previewable file
+            previewImage.src = '';
+            rawPreviewInfo.innerHTML = '<p>File preview not available for this file type.</p>';
+        }
+        
+        modal.style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('previewModal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside the content
+    window.onclick = function(event) {
+        const modal = document.getElementById('previewModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    }
+</script>
 {% endblock %}
