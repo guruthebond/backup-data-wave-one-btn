@@ -295,7 +295,38 @@ def handle_reporting_mode():
     # Final cooldown to prevent accidental retrigger
     time.sleep(1.0)
 
+def handle_chkfile_mode():
+    # Same functionality as WebUI Backup
+    ip_address = HARD_CODED_IP
+    start_hostapd_service()
+    font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)
+    display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "Then [KEY3]", font_icons=font_icons)
 
+    # Wait for KEY3 press and release to proceed
+    while button_key3.is_pressed:
+        time.sleep(0.1)
+    while not button_key3.is_pressed:
+        time.sleep(0.1)
+    while button_key3.is_pressed:
+        time.sleep(0.1)  # Wait until released
+
+    start_flask_service()
+    display_qr_code(f"http://192.168.0.1:5000/chkfiles")
+
+    # Wait for KEY3 press and release to exit
+    while not button_key3.is_pressed:
+        time.sleep(0.5)
+    while button_key3.is_pressed:
+        time.sleep(0.5)
+
+    stop_flask_service()
+    display_message_wifi_oled("ChkFiles", "Stopped", "Returning ...", font_icons=font_icons)
+    time.sleep(2)
+    # Wait until KEY2 is fully released before returning to main loop
+    while button_key3.is_pressed:
+        time.sleep(0.5)
+    # Final cooldown to prevent accidental retrigger
+    time.sleep(1.0)
 
 def confirm_reset():
     options = ["Cancel", "Confirm"]
@@ -1154,7 +1185,7 @@ def display_qr_code(url):
         time.sleep(0.1)
 
     # Main loop to keep displaying QR
-    while not (button_left.is_pressed or button_key2.is_pressed):
+    while not (button_left.is_pressed or button_key2.is_pressed or button_key3.is_pressed):
         time.sleep(0.5)
         with canvas(device) as draw:
             for x in range(device.width):
@@ -1847,28 +1878,11 @@ def main():
                 time.sleep(0.5)  # Prevent immediate reentry
                 continue
             elif choice == "KEY3":
-                while True:
-                    settings_choice = navigate_menu_time(settings_menu_items)
-                    if settings_choice == "\uf017 Set Time":
-                        set_time_manually()
-                    elif settings_choice == "\uf28d Shutdown":
-                        os.system("sudo shutdown now")
-                        with canvas(device) as draw:
-                            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
-                        return
-                    elif settings_choice == "\uf021 Reboot":
-                        os.system("sudo reboot")
-                        with canvas(device) as draw:
-                            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
-                        return
-                    elif settings_choice == "\uf28d Back":
-                        break
-                    elif settings_choice == "\uf129 Version":
-                        backup_data_version()
-                    elif settings_choice == "\uf2f1 Factory Reset":
-                        confirm_reset()
-                    elif settings_choice == "\uf56d Update":
-                        check_for_update()
+                handle_chkfile_mode()
+                # --- Debounce and cooldown ---
+                while button_key3.is_pressed:
+                    time.sleep(0.1)  # Wait for full release
+                time.sleep(0.5)  # Prevent immediate reentry
                 continue
 
             # --- Handle regular menu choices ---
