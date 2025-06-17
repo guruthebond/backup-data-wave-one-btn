@@ -145,14 +145,15 @@ def preview_raw():
 @app.route('/preview_image')
 def preview_image():
     file_path = request.args.get('file')
-    
-    # Security check - ensure the path is within our allowed directories
-    if not file_path.startswith('/mnt/usb/source/') and not file_path.startswith('/mnt/usb/destination/'):
+
+    # Security check - allow only specific base paths
+    allowed_dirs = ['/mnt/usb/source/', '/mnt/usb/destination/', '/mnt/usb/check/']
+    if not any(file_path.startswith(path) for path in allowed_dirs):
         return "Access denied", 403
-    
+
     if not os.path.exists(file_path):
         return "File not found", 404
-    
+
     return send_file(file_path)
 
 @app.route('/browse_folder', methods=['GET'])
