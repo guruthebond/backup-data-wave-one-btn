@@ -90,12 +90,19 @@
     </style>
 </head>
 <body class="light-mode">
+            <!-- Dark Mode Toggle Button -->
+    <button class="dark-mode-toggle" id="darkModeToggle" title="Toggle Dark Mode">
+        <img src="{{ url_for('static', filename='icons/0-circle-fill.svg') }}" class="icon" alt="Dark Mode" style="width: 20px; height: 20px;">
+    </button>
 <!-- Logo -->
 <div class="text-center mt-3">
     <img id="logo" src="{{ url_for('static', filename='PuffrectBakup-Logo-Black.png') }}" 
          alt="PuffrectBakup Logo" width="250" height="35">
 </div>
-
+</div>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand navbar-light" id="mainNavbar">
+    </nav>
     <!-- Main Content Container -->
     <div class="container">
         {% block content %}{% endblock %}
@@ -103,40 +110,35 @@
 
     <!-- Link to local Bootstrap JS -->
     <script src="{{ url_for('static', filename='bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js') }}"></script>
-    <script>
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const body = document.body;
-        const navbar = document.getElementById('mainNavbar');
+<script>
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const body = document.body;
+    const navbar = document.getElementById('mainNavbar');
+    const logo = document.getElementById('logo');
 
-        // Load dark mode preference from localStorage
-        if (localStorage.getItem('darkMode') === 'true') {
-            body.classList.replace('light-mode', 'dark-mode');
-            navbar.classList.replace('navbar-light', 'navbar-dark');
-        }
+    // Load dark mode preference
+    if (localStorage.getItem('darkMode') === 'true') {
+        body.classList.replace('light-mode', 'dark-mode');
+        navbar.classList.replace('navbar-light', 'navbar-dark');
+        logo.src = "{{ url_for('static', filename='PuffrectBakup-Logo-White.png') }}";
+    }
 
-        // Toggle dark mode
-        darkModeToggle.addEventListener('click', () => {
-            const isDarkMode = body.classList.contains('dark-mode');
-            body.classList.toggle('dark-mode', !isDarkMode);
-            body.classList.toggle('light-mode', isDarkMode);
+    // Toggle dark mode
+    darkModeToggle.addEventListener('click', () => {
+        const isDarkMode = body.classList.contains('dark-mode');
 
-            // Toggle navbar classes
-            navbar.classList.toggle('navbar-light', isDarkMode);
-            navbar.classList.toggle('navbar-dark', !isDarkMode);
+        body.classList.toggle('dark-mode', !isDarkMode);
+        body.classList.toggle('light-mode', isDarkMode);
+        navbar.classList.toggle('navbar-light', isDarkMode);
+        navbar.classList.toggle('navbar-dark', !isDarkMode);
 
-            // Debugging: Log the current mode
-            console.log('Dark mode is now:', !isDarkMode);
+        const newIsDarkMode = !isDarkMode;
+        logo.src = newIsDarkMode
+            ? "{{ url_for('static', filename='PuffrectBakup-Logo-White.png') }}"
+            : "{{ url_for('static', filename='PuffrectBakup-Logo-Black.png') }}";
 
-            // Save preference to localStorage
-            localStorage.setItem('darkMode', !isDarkMode);
-                    // Toggle logo
-        logo.src = isDarkMode 
-            ? "{{ url_for('static', filename='PuffrectBakup-Logo-Black.png') }}" 
-            : "{{ url_for('static', filename='PuffrectBakup-Logo-White.png') }}";
-
-        // Save preference to localStorage
-        localStorage.setItem('darkMode', !isDarkMode);
-        });
-    </script>
+        localStorage.setItem('darkMode', newIsDarkMode);
+    });
+</script>
 </body>
 </html>
