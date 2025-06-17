@@ -23,9 +23,13 @@ import lgpio
 import pytz
 import datetime
 
+
 # Add these near the top with other global variables
 last_main_menu_index = 0
 last_settings_menu_index = 0
+current_brightness = 128  # Default brightness (0-255)
+brightness_states = [32, 64, 128, 192, 255]  # Different brightness levels
+brightness_index = 2  # Start at middle brightness (128)
 
 def __patched_init(self, chip=None):
     gpiozero.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
@@ -174,8 +178,16 @@ def get_button_press():
     elif button_right.is_pressed:
         time.sleep(0.2)  # Debounce
         return "RIGHT"
+    elif button_key1.is_pressed:
+        time.sleep(0.2)
+        return "KEY1"
+    elif button_key2.is_pressed:
+        time.sleep(0.2)
+        return "KEY2"
+    elif button_key3.is_pressed:
+        time.sleep(0.2)
+        return "KEY3"
     return None
-
 
 # I2C setup for OLED display
 #serial = i2c(port=1, address=0x3C) 
@@ -195,11 +207,95 @@ button_down = Button(6, hold_time=2, bounce_time=0.3)
 button_select = Button(13, hold_time=2, bounce_time=0.3)
 button_left = Button(26, hold_time=2, bounce_time=0.3)
 button_right = Button(5, hold_time=2, bounce_time=0.3)
+button_key3 = Button(21, bounce_time=0.3)  # KEY1 for brightness control
+button_key2 = Button(20, bounce_time=0.3)  # KEY2 for reporting/WebUI
+button_key1 = Button(16, bounce_time=0.3)  # KEY3 for settings menu
 
 menu_items = ["\uf0c5 Just Copy", "\uf133 Dated Copy", "\uf15c Copy History", "\uf1c0 Disk Info", "\uf7b9 Disk Check", "\uf1eb WebUI Backup","\uf013 Settings"]
 shutdown_menu_items = ["\uf28d Shutdown", "\uf021 Reboot", "\uf28d Cancel"]
 settings_menu_items = ["\uf129 Version", "\uf56d Update", "\uf021 Reboot", "\uf28d Shutdown", "\uf017 Set Time", "\uf2f1 Factory Reset", "\uf28d Back"]
 selected_index = 0
+
+def handle_brightness_control():
+    global current_brightness, brightness_index
+
+    last_press_time = time.time()
+    timeout = 1  # seconds of inactivity before exiting
+
+    while True:
+        now = time.time()
+
+        # If button is pressed, update brightness
+        if button_key1.is_pressed:
+            # Debounce: wait for release
+            while button_key1.is_pressed:
+                time.sleep(0.05)
+
+            brightness_index = (brightness_index + 1) % len(brightness_states)
+            current_brightness = brightness_states[brightness_index]
+            device.contrast(current_brightness)
+            last_press_time = now  # reset timeout clock
+
+        # Draw UI
+        with canvas(device) as draw:
+            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+
+            heading = "Brightness"
+            heading_width = draw.textlength(heading, font=font_heading)
+            heading_x = (device.width - heading_width) // 2
+            draw.text((heading_x, 2), heading, font=font_heading, fill="white")
+            draw.line((0, 18, device.width, 18), fill="white")
+
+            level_text = f"Level {brightness_index + 1} / {len(brightness_states)}"
+            level_width = draw.textlength(level_text, font=font_medium)
+            level_x = (device.width - level_width) // 2
+            draw.text((level_x, 26), level_text, font=font_medium, fill="white")
+
+            footer1 = "Press again to adjust"
+            footer2 = "Auto exit in 1 sec"
+            draw.text(((device.width - draw.textlength(footer1, font=font_small)) // 2, 44), footer1, font=font_small, fill="white")
+            draw.text(((device.width - draw.textlength(footer2, font=font_small)) // 2, 54), footer2, font=font_small, fill="white")
+
+        # Exit if timeout
+        if now - last_press_time > timeout:
+            break
+
+        time.sleep(0.1)
+
+def handle_reporting_mode():
+    # Same functionality as WebUI Backup
+    ip_address = HARD_CODED_IP
+    start_hostapd_service()
+    font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)
+    display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "Then [KEY2]", font_icons=font_icons)
+
+    # Wait for KEY2 press and release to proceed
+    while button_key2.is_pressed:
+        time.sleep(0.1)
+    while not button_key2.is_pressed:
+        time.sleep(0.1)
+    while button_key2.is_pressed:
+        time.sleep(0.1)  # Wait until released
+
+    start_flask_service()
+    display_qr_code(f"http://192.168.0.1:5000/report")
+
+    # Wait for KEY2 press and release to exit
+    while not button_key2.is_pressed:
+        time.sleep(0.5)
+    while button_key2.is_pressed:
+        time.sleep(0.5)
+
+    stop_flask_service()
+    display_message_wifi_oled("Reporting", "Stopped", "Returning ...", font_icons=font_icons)
+    time.sleep(2)
+    # Wait until KEY2 is fully released before returning to main loop
+    while button_key2.is_pressed:
+        time.sleep(0.5)
+    # Final cooldown to prevent accidental retrigger
+    time.sleep(1.0)
+
+
 
 def confirm_reset():
     options = ["Cancel", "Confirm"]
@@ -1044,42 +1140,30 @@ def display_message_wifi_oled(*lines, font_icons):
 # Function to generate and display a borderless QR code
 def display_qr_code(url):
     """Generate and display a dot matrix QR code for the given URL"""
-    # Lower the contrast (dim the display) when showing the QR code
     device.contrast(50)
 
-    # Generate the QR code
+    # Generate and process QR code
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=2, border=0)
     qr.add_data(url)
     qr.make(fit=True)
     img = qr.make_image(fill="black", back_color="white")
+    img = img.resize((device.width, device.height)).convert("1")
 
-    # Resize the QR code to fit the OLED screen (128x64)
-    img = img.resize((device.width, device.height))
+    # Wait if KEY2 is still being held (debounce)
+    while button_key2.is_pressed:
+        time.sleep(0.1)
 
-    # Convert the QR code image to a dot matrix
-    img = img.convert("1")  # Convert to binary (black and white)
-
-    # Display the dot matrix QR code on the OLED
-    with canvas(device) as draw:
-        for x in range(device.width):
-            for y in range(device.height):
-                if img.getpixel((x, y)) == 0:  # If the pixel is black
-                    draw.point((x, y), fill="white")  # Draw a white dot
-
-    # Increase refresh rate by refreshing the QR code every 0.5s
-    while not button_left.is_pressed:
+    # Main loop to keep displaying QR
+    while not (button_left.is_pressed or button_key2.is_pressed):
         time.sleep(0.5)
         with canvas(device) as draw:
             for x in range(device.width):
                 for y in range(device.height):
-                    if img.getpixel((x, y)) == 0:  # If the pixel is black
-                        draw.point((x, y), fill="white")  # Draw a white dot
+                    if img.getpixel((x, y)) == 0:
+                        draw.point((x, y), fill="white")
 
-    # Restore contrast to normal
-    device.contrast(128)
+    device.contrast(128)  # Restore normal contrast
 
-    # Once QR code is done, restore contrast to normal
-    device.contrast(128)  # Restore normal contrast (128 = mid-brightness)
 
 def get_partition_label(device):
     """
@@ -1352,7 +1436,7 @@ def display_menu(menu, title="PurrfectBackup"):
             draw.text((device.width // 2 + 50, device.height - 58), "▼", font=font_small, fill="white")
 
 
-def navigate_menu(menu, title="PurrfectBackup"):
+def navigate_menu(menu, title="PurrfectBackup", check_special_buttons=True):
     global selected_index, last_main_menu_index
     
     # Restore last position if coming back to main menu
@@ -1361,12 +1445,34 @@ def navigate_menu(menu, title="PurrfectBackup"):
     
     prev_index = -1  # Store previous selection
     max_visible_items = 3  # Number of visible items
-
+    last_button_check = time.time()
+    
     while True:
-        if selected_index != prev_index:  # Only update if the selection changed
+        # Check for special button presses every 100ms
+        current_time = time.time()
+        if current_time - last_button_check >= 0.1 and check_special_buttons:
+            last_button_check = current_time
+            
+            if button_key1.is_pressed:
+                handle_brightness_control()
+                time.sleep(0.5)
+                return "KEY1"
+                
+            if button_key2.is_pressed:
+                #handle_reporting_mode()
+                time.sleep(0.5)
+                return "KEY2"
+                
+            if button_key3.is_pressed:
+                time.sleep(0.5)
+                return "KEY3"
+        
+        # Only update display if selection changed
+        if selected_index != prev_index:
             display_menu(menu, title)
             prev_index = selected_index
 
+        # Handle navigation buttons
         if button_up.is_pressed:
             selected_index = max(0, selected_index - 1)
             time.sleep(0.2)
@@ -1718,135 +1824,166 @@ def display_summary_dated(source, dest):
         time.sleep(0.1)  # Avoid High CPU usage
 
 def main():
-    global selected_index
+    global selected_index, current_brightness
+
+    # Initialize display brightness
+    device.contrast(current_brightness)
+    print("\nSystem Ready - Press KEY1-3 at any time!")
+
     while True:
-        selected_index = 0
-        choice = navigate_menu(menu_items)
-        if choice == "\uf0c5 Just Copy":
-            source = select_partition('source')
-            if source is None:
-                # Handle returning to the main menu
+        try:
+            # Main menu navigation with special key handling
+            choice = navigate_menu(menu_items, "PurrfectBackup", True)
+
+            # --- Handle KEY1-3 shortcuts ---
+            if choice == "KEY1":
+                handle_brightness_control()
                 continue
-            dest = select_partition('destination', exclude_disk=source[0][:3])
-            if dest is None:
-                # Handle returning to the main menu
+            elif choice == "KEY2":
+                handle_reporting_mode()
+                # --- Debounce and cooldown ---
+                while button_key2.is_pressed:
+                    time.sleep(0.1)  # Wait for full release
+                time.sleep(0.5)  # Prevent immediate reentry
                 continue
-            if os.path.ismount("/mnt/src"):
+            elif choice == "KEY3":
+                while True:
+                    settings_choice = navigate_menu_time(settings_menu_items)
+                    if settings_choice == "\uf017 Set Time":
+                        set_time_manually()
+                    elif settings_choice == "\uf28d Shutdown":
+                        os.system("sudo shutdown now")
+                        with canvas(device) as draw:
+                            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+                        return
+                    elif settings_choice == "\uf021 Reboot":
+                        os.system("sudo reboot")
+                        with canvas(device) as draw:
+                            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+                        return
+                    elif settings_choice == "\uf28d Back":
+                        break
+                    elif settings_choice == "\uf129 Version":
+                        backup_data_version()
+                    elif settings_choice == "\uf2f1 Factory Reset":
+                        confirm_reset()
+                    elif settings_choice == "\uf56d Update":
+                        check_for_update()
+                continue
+
+            # --- Handle regular menu choices ---
+            if choice == "\uf0c5 Just Copy":
+                print("Starting Just Copy...")
+                source = select_partition('source')
+                if source is None:
+                    continue
+                dest = select_partition('destination', exclude_disk=source[0][:3])
+                if dest is None:
+                    continue
+
+                # Clean previous mounts
+                if os.path.ismount("/mnt/src"): unmount_partition("/mnt/src")
+                if os.path.ismount("/mnt/dst"): unmount_partition("/mnt/dst")
+
+                # Mount and copy
+                mount_partition(source[0], "/mnt/src")
+                mount_partition(dest[0], "/mnt/dst")
+                result = display_summary(source, dest)
+                if result == "Back to Main Menu":
+                    continue
+
                 unmount_partition("/mnt/src")
-            if os.path.ismount("/mnt/dst"):
                 unmount_partition("/mnt/dst")
 
-            mount_partition(source[0], "/mnt/src")
-            mount_partition(dest[0], "/mnt/dst")
-            result = display_summary(source, dest) 
-            if result == "Back to Main Menu":
-                continue  # Return to the beginning of the main loop
-            # Execute copy command here (e.g., os.system('rsync -av /mnt/src/ /mnt/dst/'))
-            #copy_mode(device, mode="just")
-            unmount_partition("/mnt/src")
-            unmount_partition("/mnt/dst")
-        elif choice == "\uf133 Dated Copy":
-            source = select_partition('source')
-            if source is None:
-                # Handle returning to the main menu
-                continue
-            dest = select_partition('destination', exclude_disk=source[0][:3])
-            if dest is None:
-                # Handle returning to the main menu
-                continue
-            if os.path.ismount("/mnt/src"):
+            elif choice == "\uf133 Dated Copy":
+                print("Starting Dated Copy...")
+                source = select_partition('source')
+                if source is None:
+                    continue
+                dest = select_partition('destination', exclude_disk=source[0][:3])
+                if dest is None:
+                    continue
+
+                if os.path.ismount("/mnt/src"): unmount_partition("/mnt/src")
+                if os.path.ismount("/mnt/dst"): unmount_partition("/mnt/dst")
+
+                mount_partition(source[0], "/mnt/src")
+                mount_partition(dest[0], "/mnt/dst")
+                result = display_summary_dated(source, dest)
+                if result == "Back to Main Menu":
+                    continue
+
                 unmount_partition("/mnt/src")
-            if os.path.ismount("/mnt/dst"):
                 unmount_partition("/mnt/dst")
 
-            mount_partition(source[0], "/mnt/src")
-            mount_partition(dest[0], "/mnt/dst")
-            result = display_summary_dated(source, dest) 
-            if result == "Back to Main Menu":
-                continue  # Return to the beginning of the main loop
-            #copy_mode(device, mode="dated")
-            unmount_partition("/mnt/src")
-            unmount_partition("/mnt/dst")
-            #display_summary_dated(source, dest)
-            #print("Dated Copy selected")
-            # Add your code here
-        elif choice == "\uf1eb WebUI Backup":
-            # Use the hardcoded IP
-            ip_address = HARD_CODED_IP
-            # Show SSID and Password
-            start_hostapd_service()
-            # Set the font to the one that includes icons
-            font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)  # Adjust size if needed
-            display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "Then [Select]", font_icons=font_icons)
-            print("Hit 'Select' to proceed.")
-            
-            #display_message_wifi_oled("[Connect Phone]", "WIFI: BackMeUp", "Pass: 11223344","thn press[Select]")
-            #print("Hit 'Select' to proceed.")
-            
-            # Wait for the "Select" button press to proceed to QR code
-            while not button_select.is_pressed:
-                time.sleep(0.1)  # Wait for button press (non-blocking)
-            
-            print("Proceeding to start \nWebUI service...")
-            time.sleep(0.5)  # Debounce delay
-            
-            # Start Flask service
-            start_flask_service()
-            print("WeUI service \nstarted!")
+            elif choice == "\uf1eb WebUI Backup":
+                print("Starting WebUI Backup...")
+                ip_address = HARD_CODED_IP
+                start_hostapd_service()
 
-            # Show QR Code and keep it visible as long as Flask is running
-            #display_message_wifi_oled("Scan QR to open WebUI", f"http://{ip_address}:5000")
-            display_qr_code(f"http://{ip_address}:5000")
-            print("QR Code displayed. Press 'Select' to stop Flask service.")
+                font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)
+                display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "Then [Select]", font_icons=font_icons)
 
-            # Wait for the "Select" button press to stop Flask service
-            while not button_left.is_pressed:
-                time.sleep(0.1)  # Wait for button press (non-blocking)
-            
-            print("Button pressed! Stopping WebUI service...")
-            time.sleep(0.5)  # Debounce delay
-            stop_flask_service()
+                while not button_select.is_pressed:
+                    time.sleep(0.1)
 
-            # Show message before returning to the main menu
-            display_message_wifi_oled("WebUI Service", "Stopped", "Returning ...", font_icons=font_icons)
-            time.sleep(2)  # Wait for a moment before returning to the main menu
-            continue  # Return to the main menu
-            #print("Backup via WebUI selected") 
-            # Add your code here
-        elif choice == "\uf1c0 Disk Info":
-            disk_info_menu()
-        elif choice == "\uf7b9 Disk Check":
-            disk_check_menu()
-        elif choice == "\uf15c Copy History":
-            copy_history_menu()  # Show Copy History menu
- 
+                time.sleep(0.5)  # Debounce
+                start_flask_service()
+                display_qr_code(f"http://{ip_address}:5000")
 
-        elif choice == "\uf013 Settings":
-            while True:
-                settings_choice = navigate_menu_time(settings_menu_items)
-                if settings_choice == "\uf017 Set Time":
-                    set_time_manually()
-                elif settings_choice == "\uf28d Shutdown":
-                    os.system("sudo shutdown now")
-                    with canvas(device) as draw:
-                        draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
-                elif settings_choice == "\uf021 Reboot":
-                    os.system("sudo reboot")
-                    with canvas(device) as draw:
-                        draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
-                elif settings_choice == "\uf28d Back":
-                    break  # Exit settings menu loop and return to main menu
-                elif settings_choice == "\uf129 Version":
-                    backup_data_version()
-                elif settings_choice == "\uf2f1 Factory Reset":
-                    confirm_reset()
-                elif settings_choice == "\uf56d Update":
-                    check_for_update()
+                while not button_left.is_pressed:
+                    time.sleep(0.1)
 
+                stop_flask_service()
+                display_message_wifi_oled("WebUI Service", "Stopped", "Returning ...", font_icons=font_icons)
+                time.sleep(2)
 
+            elif choice == "\uf1c0 Disk Info":
+                print("Showing Disk Info...")
+                disk_info_menu()
 
-        elif choice == "System Menu":
-            navigate_shutdown_menu()
+            elif choice == "\uf7b9 Disk Check":
+                print("Running Disk Check...")
+                disk_check_menu()
+
+            elif choice == "\uf15c Copy History":
+                print("Showing Copy History...")
+                copy_history_menu()
+
+            elif choice == "\uf013 Settings":
+                print("Entering Settings...")
+                while True:
+                    settings_choice = navigate_menu_time(settings_menu_items)
+                    if settings_choice == "\uf017 Set Time":
+                        set_time_manually()
+                    elif settings_choice == "\uf28d Shutdown":
+                        os.system("sudo shutdown now")
+                        with canvas(device) as draw:
+                            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+                        return
+                    elif settings_choice == "\uf021 Reboot":
+                        os.system("sudo reboot")
+                        with canvas(device) as draw:
+                            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+                        return
+                    elif settings_choice == "\uf28d Back":
+                        break
+                    elif settings_choice == "\uf129 Version":
+                        backup_data_version()
+                    elif settings_choice == "\uf2f1 Factory Reset":
+                        confirm_reset()
+                    elif settings_choice == "\uf56d Update":
+                        check_for_update()
+
+            elif choice == "System Menu":
+                print("Entering System Menu...")
+                navigate_shutdown_menu()
+
+        except Exception as e:
+            print(f"\nERROR in main loop: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            time.sleep(1)
 
 
 if __name__ == "__main__":
