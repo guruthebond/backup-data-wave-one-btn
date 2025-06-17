@@ -45,7 +45,7 @@ ddcutil setvcp d6 5
 # Create project folders
 echo "Creating project directories..."
 echo "Creating mount points and backup directory..."
-sudo mkdir -p /mnt/usb/source /mnt/usb/destination /mnt/src /mnt/dst
+sudo mkdir -p /mnt/usb/source /mnt/usb/destination /mnt/src /mnt/dst /mnt/usb/check
 mkdir -p /backup-data
 cd /backup-data || exit
 
