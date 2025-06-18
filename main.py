@@ -1170,30 +1170,61 @@ def display_message_wifi_oled(*lines, font_icons):
 
 # Function to generate and display a borderless QR code
 def display_qr_code(url):
-    """Generate and display a dot matrix QR code for the given URL"""
     device.contrast(50)
 
-    # Generate and process QR code
-    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=2, border=0)
+    # Generate QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=2,
+        border=2
+    )
     qr.add_data(url)
     qr.make(fit=True)
-    img = qr.make_image(fill="black", back_color="white")
-    img = img.resize((device.width, device.height)).convert("1")
+    img = qr.make_image(fill="black", back_color="white").convert("1")
 
-    # Wait if KEY2 is still being held (debounce)
+    qr_w, qr_h = img.size
+    qr_x = (device.width - qr_w) // 2
+    qr_y = (device.height - 16 - qr_h) // 2  # leave space at bottom for label
+
+    # Font to use
+    font = font_small
+
+    # Alternating labels
+    labels = ['Conn Wifi "BackMeUp"', "Then Scan QR Code"]
+    label_index = 0
+    last_toggle = time.time()
+
     while button_key2.is_pressed:
         time.sleep(0.1)
 
-    # Main loop to keep displaying QR
     while not (button_left.is_pressed or button_key2.is_pressed or button_key3.is_pressed):
-        time.sleep(0.5)
-        with canvas(device) as draw:
-            for x in range(device.width):
-                for y in range(device.height):
-                    if img.getpixel((x, y)) == 0:
-                        draw.point((x, y), fill="white")
+        # Toggle label every 2 seconds
+        current_time = time.time()
+        if current_time - last_toggle >= 2:
+            label_index = (label_index + 1) % len(labels)
+            last_toggle = current_time
 
-    device.contrast(128)  # Restore normal contrast
+        current_label = labels[label_index]
+
+        with canvas(device) as draw:
+            # Draw QR
+            for x in range(qr_w):
+                for y in range(qr_h):
+                    if img.getpixel((x, y)) == 0:
+                        draw.point((qr_x + x, qr_y + y), fill="white")
+
+            # Measure and center label
+            text_bbox = draw.textbbox((0, 0), current_label, font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_x = (device.width - text_width) // 2
+            text_y = device.height - 12
+
+            draw.text((text_x, text_y), current_label, font=font, fill="white")
+
+        time.sleep(0.1)  # refresh more often for smoother switching
+
+    device.contrast(128)
 
 
 def get_partition_label(device):
