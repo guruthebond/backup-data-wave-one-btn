@@ -1195,7 +1195,7 @@ def display_qr_code(url, mode="wifi"):
         labels = [
             'Conn Wifi "BackMeUp"',
             "Then Scan QR Code",
-            "For Backup WebUI"
+            "Backup via WebUI"
         ]
     elif mode == "reporting":
         labels = [
