@@ -278,7 +278,7 @@ def handle_reporting_mode():
         time.sleep(0.1)  # Wait until released
 
     start_flask_service()
-    display_qr_code(f"http://192.168.0.1:5000/report")
+    display_qr_code(f"http://192.168.0.1:5000/report", mode="reporting")
 
     # Wait for KEY2 press and release to exit
     while not button_key2.is_pressed:
@@ -311,7 +311,7 @@ def handle_chkfile_mode():
         time.sleep(0.1)  # Wait until released
 
     start_flask_service()
-    display_qr_code(f"http://192.168.0.1:5000/chkfiles")
+    display_qr_code(f"http://192.168.0.1:5000/chkfiles", mode="checkfiles")
 
     # Wait for KEY3 press and release to exit
     while not button_key3.is_pressed:
@@ -1169,7 +1169,7 @@ def display_message_wifi_oled(*lines, font_icons):
             draw.text((15, y_position + 1), select_text, font=font_medium, fill="black")
 
 # Function to generate and display a borderless QR code
-def display_qr_code(url):
+def display_qr_code(url, mode="wifi"):
     device.contrast(50)
 
     # Generate QR code
@@ -1190,8 +1190,32 @@ def display_qr_code(url):
     # Font to use
     font = font_small
 
-    # Alternating labels
-    labels = ['Conn Wifi "BackMeUp"', "Then Scan QR Code"]
+    # Mode-specific labels
+    if mode == "wifi":
+        labels = [
+            'Conn Wifi "BackMeUp"',
+            "Then Scan QR Code",
+            "For Backup WebUI"
+        ]
+    elif mode == "reporting":
+        labels = [
+            'Conn Wifi "BackMeUp"',
+            "Then Scan QR Code",
+            "Check Reports History"
+        ]
+    elif mode == "checkfiles":
+        labels = [
+            'Conn Wifi "BackMeUp"',
+            "Then Scan QR Code",
+            "Media Validation"
+        ]
+    else:
+        labels = [
+            'Conn Wifi "BackMeUp"',
+            "Then Scan QR Code",
+            "Backup via WebUI"
+        ]
+
     label_index = 0
     last_toggle = time.time()
 
@@ -1225,7 +1249,6 @@ def display_qr_code(url):
         time.sleep(0.1)  # refresh more often for smoother switching
 
     device.contrast(128)
-
 
 def get_partition_label(device):
     """
@@ -1974,7 +1997,7 @@ def main():
 
                 time.sleep(0.5)  # Debounce
                 start_flask_service()
-                display_qr_code(f"http://{ip_address}:5000")
+                display_qr_code(f"http://{ip_address}:5000", mode="wifi")
 
                 while not button_left.is_pressed:
                     time.sleep(0.1)
