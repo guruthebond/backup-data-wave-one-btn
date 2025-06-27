@@ -7,282 +7,287 @@
 <link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
 
 <style>
-    /* Container for the entire form */
+    /* Base styles */
+    :root {
+        --card-bg: #ffffff;
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --text-primary: #2d3748;
+        --text-secondary: #4a5568;
+        --border-color: #e2e8f0;
+        --primary-color: #4299e1;
+        --hover-bg: #f7fafc;
+    }
+
+    body.dark-mode {
+        --card-bg: #2d3748;
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        --text-primary: #f8f9fa;
+        --text-secondary: #cbd5e0;
+        --border-color: #4a5568;
+        --primary-color: #63b3ed;
+        --hover-bg: #3c4657;
+    }
+
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.6);
+  }
+  .modal-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+  }
+  .modal-body img {
+      max-width: 90%;
+      max-height: 70vh;
+      margin-bottom: 20px;
+  }
+  .close-btn {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+}
+.close-btn:hover {
+    background-color: #3182ce; /* slightly darker shade for hover */
+}
+    /* Container styles */
     .form-container {
         max-width: 600px;
         margin: 2rem auto;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: var(--form-bg, #f9f9f9);
-        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+        border-radius: 12px;
+        background: var(--card-bg);
+        box-shadow: var(--card-shadow);
     }
 
-    /* Heading style */
-    h1 {
-        text-align: center;
-        margin-bottom: 1rem;
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: var(--heading-color, #333);
-        background-color: var(--heading-bg, #fff);
-        padding: 0.5rem;
-        border-radius: 8px;
-        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    body.dark-mode h1 {
-        color: #f0f0f0;
-        background-color: #444;
-    }
-
-    /* Form fields styling */
-    .form-select {
-        font-size: 1.1rem;
-        width: 100%;
-    }
-
-    button {
-        width: 100%;
-        padding: 12px;
-        font-size: 1.2rem;
-        margin-top: 1rem;
-    }
-
-    /* Disabled button styling */
-    .disabled-button {
-        pointer-events: none;
-        background-color: #6c757d;
-    }
-
-    /* Browse container */
     .browse-container {
-        max-width: 800px;
-        margin: 1rem auto;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 2rem;
+        border-radius: 12px;
+        background: var(--card-bg);
+        box-shadow: var(--card-shadow);
     }
 
-    body.dark-mode .browse-container {
-        background-color: #333;
-        border-color: #555;
-        color: #f1f1f1;
+    /* Typography */
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        text-align: center;
     }
 
-    /* Section styling */
-    .section {
-        margin: 1.5rem 0;
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 1.5rem 0 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--primary-color);
     }
 
-    /* Items list */
-    .items-list {
-        width: 100%;
-        margin-top: 0.5rem;
+    /* Card styles */
+    .date-card {
+        margin-bottom: 1.5rem;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.2s ease;
     }
 
-    /* Item row */
-    .item-row {
+    .date-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .date-header {
         display: flex;
-        border-bottom: 1px solid #ddd;
-        padding: 0.75rem 0.5rem;
-    }
-
-    body.dark-mode .item-row {
-        border-bottom-color: #555;
-    }
-
-    /* Item link */
-    .item-link, .file-item {
-        display: flex;
-        width: 100%;
-        text-decoration: none;
-        color: inherit;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1.25rem;
+        background-color: var(--primary-color);
+        color: white;
         cursor: pointer;
     }
 
-    /* Item name */
-    .item-name {
+    .date-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .date-count {
+        background-color: rgba(255, 255, 255, 0.2);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+    }
+
+    .file-list {
+        background-color: var(--card-bg);
+    }
+
+    .file-card {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s ease;
+    }
+
+    .file-card:last-child {
+        border-bottom: none;
+    }
+
+    .file-card:hover {
+        background-color: var(--hover-bg);
+    }
+
+    .file-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 1rem;
+        color: var(--primary-color);
+    }
+
+    .file-info {
         flex: 1;
-        word-break: break-all;
-        padding-right: 0.5rem;
+        min-width: 0; /* Prevent flex item from overflowing */
     }
 
-    /* Item size */
-    .item-size {
-        min-width: 80px;
-        text-align: right;
-        padding: 0 0.5rem;
+    .file-name {
+        font-weight: 500;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    /* Item action */
-    .item-action {
-        min-width: 60px;
-        text-align: right;
-        color: #007bff;
-    }
-
-    body.dark-mode .item-action {
-        color: #4da6ff;
-    }
-
-    /* Folder item hover */
-    .folder-item:hover {
-        text-decoration: underline;
-    }
-
-    /* File item hover */
-    .file-item:hover {
-        background-color: rgba(0, 123, 255, 0.1);
-    }
-
-    body.dark-mode .file-item:hover {
-        background-color: rgba(77, 166, 255, 0.1);
-    }
-
-    /* Navigation buttons */
-    .nav-buttons {
+    .file-details {
         display: flex;
         justify-content: space-between;
-        margin: 1rem 0;
+        margin-top: 0.25rem;
+    }
+
+    .file-size {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .file-date {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .file-action {
+        margin-left: 1rem;
+        color: var(--primary-color);
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    /* Buttons */
+    .nav-buttons {
+        display: flex;
         gap: 1rem;
+        margin: 2rem 0;
     }
 
-    /* Navigation button */
     .nav-button {
-        display: inline-block;
-        padding: 0.6rem 1rem;
-        font-size: 1rem;
-        border-radius: 5px;
-        text-decoration: none;
-        text-align: center;
-        transition: background-color 0.2s;
         flex: 1;
-        min-width: 120px;
-        box-sizing: border-box;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-weight: 500;
+        text-align: center;
+        transition: all 0.2s ease;
     }
 
-    /* Back button */
     .back-button {
-        background-color: #28a745;
+        background-color: #38a169;
         color: white;
     }
 
     .back-button:hover {
-        background-color: #218838;
+        background-color: #2f855a;
     }
 
-    /* Home button */
     .home-button {
-        background-color: #007bff;
+        background-color: var(--primary-color);
         color: white;
     }
 
     .home-button:hover {
-        background-color: #0056b3;
+        background-color: #3182ce;
     }
 
-    /* Item date */
-    .item-date {
-        min-width: 140px;
-        text-align: right;
-        padding-left: 0.5rem;
-        font-size: 0.9rem;
-        color: #888;
-        font-style: italic;
-    }
-
-    body.dark-mode .item-date {
-        color: #ccc;
-    }
-
-    /* Modal styles */
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.8);
-    }
-
+    /* Modal */
     .modal-content {
-        background-color: #fefefe;
-        margin: 5% auto;
-        padding: 20px;
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .file-meta {
+  background-color: #f1f5f9;         /* Light gray-blue */
+  color: #2d3748;                    /* Dark text */
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+    .preview-image {
+        max-width: 100%;
+        max-height: 70vh;
         border-radius: 8px;
-        width: 80%;
-        max-width: 900px;
-        position: relative;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
-    body.dark-mode .modal-content {
-        background-color: #333;
-        color: #f1f1f1;
-    }
-
-    .close-button {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .close-button:hover {
-        color: #000;
-    }
-
-    body.dark-mode .close-button:hover {
-        color: #fff;
-    }
-
-    .preview-container {
-        margin-top: 20px;
+    /* Empty state */
+    .empty-state {
         text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
     }
 
-    /* Responsive adjustments */
-    @media (max-width: 600px) {
-        .browse-container {
-            padding: 0.5rem;
-            margin: 0.5rem;
-            border: none;
-            box-shadow: none;
+    /* Responsive */
+    @media (max-width: 768px) {
+        .form-container, .browse-container {
+            margin: 1rem;
+            padding: 1.5rem;
         }
 
-        h1 {
-            font-size: 1.4rem;
+        .file-card {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
-        .item-row {
-            padding: 0.5rem 0.25rem;
-            font-size: 0.9rem;
+        .file-details {
+            flex-direction: column;
+            gap: 0.25rem;
         }
 
-        .item-size {
-            min-width: 70px;
-            font-size: 0.85rem;
+        .file-action {
+            margin-left: 0;
+            margin-top: 0.5rem;
+            align-self: flex-end;
         }
 
-        .item-action {
-            min-width: 50px;
-            font-size: 0.85rem;
-        }
-
-        .nav-button {
-            padding: 0.5rem 0.8rem;
-            font-size: 0.9rem;
-            min-width: 100px;
-        }
-
-        .modal-content {
-            width: 95%;
-            margin: 10% auto;
+        .nav-buttons {
+            flex-direction: column;
         }
     }
 </style>
@@ -291,8 +296,11 @@
 <script>
     function disableButton() {
         const button = document.getElementById("mountButton");
-        button.innerHTML = "Mounting...";
-        button.classList.add("disabled-button");
+        button.innerHTML = `
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Mounting...
+        `;
+        button.disabled = true;
     }
 
     function previewFile(filePath) {
@@ -308,10 +316,17 @@
         const rawExtensions = ['.cr2', '.cr3', '.nef', '.arw', '.dng', '.raf', '.orf', '.rw2'];
         const fileExt = filePath.toLowerCase().substring(filePath.lastIndexOf('.'));
         
+        // Show loading state
+        previewImage.src = '';
+        rawPreviewInfo.innerHTML = `
+            <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        
         if (rawExtensions.includes(fileExt)) {
-            // It's a RAW file - we'll use exiftool to extract preview
-            rawPreviewInfo.innerHTML = '<p>Loading RAW preview...</p>';
-            
             fetch('/preview_raw?file=' + encodeURIComponent(filePath))
                 .then(response => response.blob())
                 .then(blob => {
@@ -320,17 +335,28 @@
                     rawPreviewInfo.innerHTML = '';
                 })
                 .catch(error => {
-                    rawPreviewInfo.innerHTML = '<p>Could not load RAW preview. This file type might not be supported.</p>';
-                    console.error('Error:', error);
+                    rawPreviewInfo.innerHTML = `
+                        <div class="alert alert-info">
+                            Could not load RAW preview. This file type might not be supported.
+                        </div>
+                    `;
                 });
         } else if (fileExt === '.jpg' || fileExt === '.jpeg' || fileExt === '.png' || fileExt === '.gif') {
-            // It's a regular image - display directly
             previewImage.src = '/preview_image?file=' + encodeURIComponent(filePath);
-            rawPreviewInfo.innerHTML = '';
+            previewImage.onload = () => rawPreviewInfo.innerHTML = '';
+            previewImage.onerror = () => {
+                rawPreviewInfo.innerHTML = `
+                    <div class="alert alert-info">
+                        Could not load image preview.
+                    </div>
+                `;
+            };
         } else {
-            // Not a previewable file
-            previewImage.src = '';
-            rawPreviewInfo.innerHTML = '<p>File preview not available for this file type.</p>';
+            rawPreviewInfo.innerHTML = `
+                <div class="alert alert-info">
+                    File preview not available for this file type.
+                </div>
+            `;
         }
         
         modal.style.display = 'block';
@@ -347,13 +373,40 @@
             closeModal();
         }
     }
+
+    // Initialize date cards to be expanded by default
+
+    document.addEventListener('DOMContentLoaded', function() {
+    const dateHeaders = document.querySelectorAll('.date-header');
+    dateHeaders.forEach(header => {
+        const content = header.nextElementSibling;
+        const icon = header.querySelector('.toggle-icon');
+
+        // Collapse by default
+        content.style.display = 'none';
+        if (icon) {
+            icon.style.transform = 'rotate(0deg)';
+        }
+
+        // Toggle on click
+        header.addEventListener('click', function() {
+            const isCollapsed = content.style.display === 'none';
+            content.style.display = isCollapsed ? 'block' : 'none';
+            if (icon) {
+                icon.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+            }
+        });
+    });
+});
+
+
 </script>
 
 <!-- Drive Selection Form -->
 <div class="form-container">
-    <h1>Select Drive to Check</h1>
+    <h1 class="page-title">Select Drive to Check</h1>
     <form method="POST" action="/mount_check" onsubmit="disableButton()">
-        <select id="drive" name="drive" class="form-select" required>
+        <select id="drive" name="drive" class="form-select mb-3" required>
             <option value="">Select Drive</option>
             {% for partition in partitions %}
                 <option value="{{ partition.name }}">
@@ -365,74 +418,118 @@
                 </option>
             {% endfor %}
         </select>
-        <button id="mountButton" type="submit" class="btn btn-primary">Mount Drive</button>
+        <button id="mountButton" type="submit" class="btn btn-primary w-100 py-2">
+            Mount Drive
+        </button>
     </form>
 </div>
 
 <!-- Browse Container (shown after mounting) -->
 {% if current_path %}
 <div class="browse-container">
-    <h1>Browse: {{ display_path if display_path else '/' }}</h1>
-
+<h2 class="text-secondary text-center fw-normal mb-3" style="font-size: 1.25rem;">
+  Browse: {{ display_path if display_path else '/' }}
+</h2>
     <!-- Back Button -->
     {% if parent_folder %}
         <div class="nav-buttons">
-            <a href="{{ url_for('browse_check_folder', current_path=parent_folder) }}" class="nav-button back-button">
-                Go Back
+                <a href="{{ url_for('browse_check_folder', current_path=parent_folder) }}"
+   class="btn btn-sm btn-outline-secondary d-inline-block mb-3"
+   style="font-size: 0.85rem; padding: 4px 10px;">
+   ← Go Back
+</a>
             </a>
         </div>
     {% endif %}
 
     <!-- Folders Section -->
-    <div class="section">
-        <h2>Folders</h2>
-        <div class="items-list">
-            {% for folder in folders %}
-                <div class="item-row">
-                    <a href="{{ url_for('browse_check_folder', current_path=folder.path) }}" class="item-link folder-item">
-                        <span class="item-name">{{ folder.name }}</span>
-                        <span class="item-size">{{ folder.size }}</span>
-                        <span class="item-action">Open</span>
+    {% if folders %}
+    <h2 class="section-title">Folders</h2>
+    <div class="folders-grid">
+        {% for folder in folders %}
+            <div class="date-card">
+                <div class="date-header">
+                    <span class="date-title">{{ folder.name }}</span>
+                    <span class="date-count">{{ folder.size }}</span>
+                </div>
+                <div class="file-list">
+                    <a href="{{ url_for('browse_check_folder', current_path=folder.path) }}" class="file-card">
+                        <svg class="file-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <div class="file-info">
+                            <div class="file-name">Open folder</div>
+                        </div>
+                        <span class="file-action">View →</span>
                     </a>
                 </div>
-            {% endfor %}
-        </div>
+            </div>
+        {% endfor %}
     </div>
+    {% endif %}
 
     <!-- Files Section -->
-    <div class="section">
-        <h2>Files</h2>
-        <div class="items-list">
-            {% for file in files %}
-                <div class="item-row">
-                    <a href="#" class="item-link file-item" onclick="previewFile('{{ current_path }}/{{ file.name }}')">
-                        <span class="item-name">{{ file.name }}</span>
-                        <span class="item-size">{{ file.size }}</span>
-                        <span class="item-date">{{ file.date }}</span>
-                    </a>
-                </div>
-            {% endfor %}
+    {% if files %}
+    <h2 class="section-title">Files</h2>
+    {# Group files by date #}
+    {% set files_by_date = {} %}
+    {% for file in files %}
+        {% set date = file.date.split(' ')[0] %}
+        {% if date not in files_by_date %}
+            {% set _ = files_by_date.update({date: []}) %}
+        {% endif %}
+        {% set _ = files_by_date[date].append(file) %}
+    {% endfor %}
+
+    {% for date, date_files in files_by_date.items() %}
+        <div class="date-card">
+            <div class="date-header">
+                <span class="date-title">{{ date }}</span>
+                <span class="date-count">{{ date_files|length }} file{% if date_files|length != 1 %}s{% endif %}</span>
+                <svg class="toggle-icon" width="16" height="16" fill="currentColor" viewBox="0 0 20 20" style="transition: transform 0.2s ease;">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            <div class="file-list">
+                {% for file in date_files %}
+<div class="file-row d-flex justify-content-between align-items-center px-2 py-1 border-bottom"
+     style="font-size: 0.9rem;">
+  <div class="flex-grow-1 text-truncate" style="max-width: 45%;">
+    {{ file.name }}
+  </div>
+  <div class="text-nowrap file-meta me-2">{{ file.date.split(' ')[1] }}</div>
+  <div class="text-nowrap file-meta me-2">{{ file.size }}</div>
+  <button class="btn btn-sm btn-outline-primary"
+          onclick="previewFile('{{ current_path }}/{{ file.name }}')">
+    Preview
+  </button>
+</div>
+                {% endfor %}
+            </div>
         </div>
-    </div>
+    {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="opacity: 0.5;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <h3>No files found</h3>
+            <p>This folder is empty</p>
+        </div>
+    {% endif %}
 
     <!-- Back to Home Button -->
-    <div class="nav-buttons">
-        <a href="{{ url_for('check_files') }}" class="nav-button home-button">
-            Back to Drive Selection
-        </a>
-    </div>
 </div>
 {% endif %}
 
 <!-- Preview Modal -->
 <div id="previewModal" class="modal">
-    <div class="modal-content">
-        <span class="close-button" onclick="closeModal()">&times;</span>
-        <h2 id="previewFileName"></h2>
-        <div class="preview-container">
-            <img id="previewImage" style="max-width: 100%; max-height: 80vh;">
-            <div id="rawPreviewInfo"></div>
-        </div>
-    </div>
+  <div class="modal-body">
+    <h4 id="previewFileName" class="mb-3 text-white"></h4>
+    <img id="previewImage" class="preview-image" src="" alt="Preview">
+    <div id="rawPreviewInfo" class="text-white mb-3"></div>
+    <button class="close-btn" onclick="closeModal()">Close Preview</button>
+  </div>
 </div>
+
 {% endblock %}
