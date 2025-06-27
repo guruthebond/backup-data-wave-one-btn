@@ -1172,7 +1172,7 @@ def display_message_wifi_oled(*lines, font_icons):
 def display_qr_code(url, mode="wifi"):
     device.contrast(50)
 
-    # Generate QR code
+    # Generate QR code once
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -1185,17 +1185,15 @@ def display_qr_code(url, mode="wifi"):
 
     qr_w, qr_h = img.size
     qr_x = (device.width - qr_w) // 2
-    qr_y = (device.height - 16 - qr_h) // 2  # leave space at bottom for label
+    qr_y = (device.height - 16 - qr_h) // 2
 
-    # Font to use
     font = font_small
 
-    # Mode-specific labels
     if mode == "wifi":
         labels = [
             'Conn Wifi "BackMeUp"',
             "Then Scan QR Code",
-            "Backup via WebUI"
+            "Backup via  WebUI"
         ]
     elif mode == "reporting":
         labels = [
@@ -1218,35 +1216,37 @@ def display_qr_code(url, mode="wifi"):
 
     label_index = 0
     last_toggle = time.time()
+    current_label = labels[label_index]
+    force_redraw = True
 
     while button_key2.is_pressed:
         time.sleep(0.1)
 
     while not (button_left.is_pressed or button_key2.is_pressed or button_key3.is_pressed):
-        # Toggle label every 2 seconds
         current_time = time.time()
         if current_time - last_toggle >= 2:
             label_index = (label_index + 1) % len(labels)
+            current_label = labels[label_index]
             last_toggle = current_time
+            force_redraw = True
 
-        current_label = labels[label_index]
+        if force_redraw:
+            with canvas(device) as draw:
+                # Draw QR only once per label switch
+                for x in range(qr_w):
+                    for y in range(qr_h):
+                        if img.getpixel((x, y)) == 0:
+                            draw.point((qr_x + x, qr_y + y), fill="white")
 
-        with canvas(device) as draw:
-            # Draw QR
-            for x in range(qr_w):
-                for y in range(qr_h):
-                    if img.getpixel((x, y)) == 0:
-                        draw.point((qr_x + x, qr_y + y), fill="white")
+                text_bbox = draw.textbbox((0, 0), current_label, font=font)
+                text_width = text_bbox[2] - text_bbox[0]
+                text_x = (device.width - text_width) // 2
+                text_y = device.height - 12
+                draw.text((text_x, text_y), current_label, font=font, fill="white")
 
-            # Measure and center label
-            text_bbox = draw.textbbox((0, 0), current_label, font=font)
-            text_width = text_bbox[2] - text_bbox[0]
-            text_x = (device.width - text_width) // 2
-            text_y = device.height - 12
+            force_redraw = False
 
-            draw.text((text_x, text_y), current_label, font=font, fill="white")
-
-        time.sleep(0.1)  # refresh more often for smoother switching
+        time.sleep(0.05)
 
     device.contrast(128)
 
