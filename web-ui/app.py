@@ -90,6 +90,8 @@ def browse_check_folder():
                          parent_folder=parent_folder,
                          partitions=get_available_partitions())
 
+from PIL import Image  # Add this at the top of your file
+
 @app.route('/preview_raw')
 def preview_raw():
     file_path = request.args.get('file')
@@ -105,29 +107,45 @@ def preview_raw():
 
     temp_path = None
     try:
+        # Create temp file for extracted preview
         with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
             temp_path = temp_file.name
 
-        # Try PreviewImage first
+        # Try PreviewImage
         result = subprocess.run(
             ['exiftool', '-b', '-PreviewImage', file_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stdout=subprocess.PIPE
         )
         if result.stdout:
             with open(temp_path, 'wb') as f:
                 f.write(result.stdout)
             return send_file(temp_path, mimetype='image/jpeg')
 
-        # Fallback to JpgFromRaw
+        # Try JpgFromRaw
         result = subprocess.run(
             ['exiftool', '-b', '-JpgFromRaw', file_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stdout=subprocess.PIPE
         )
         if result.stdout:
             with open(temp_path, 'wb') as f:
                 f.write(result.stdout)
+            return send_file(temp_path, mimetype='image/jpeg')
+
+        # Try PreviewTIFF (e.g. for .3FR)
+        with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tiff_file:
+            tiff_path = tiff_file.name
+
+        result = subprocess.run(
+            ['exiftool', '-b', '-PreviewTIFF', file_path],
+            stdout=subprocess.PIPE
+        )
+        if result.stdout:
+            with open(tiff_path, 'wb') as f:
+                f.write(result.stdout)
+
+            # Convert TIFF to JPEG using Pillow
+            im = Image.open(tiff_path)
+            im.convert('RGB').save(temp_path, 'JPEG')
             return send_file(temp_path, mimetype='image/jpeg')
 
         return "No preview available", 404
@@ -139,8 +157,11 @@ def preview_raw():
         try:
             if temp_path and os.path.exists(temp_path):
                 os.unlink(temp_path)
-        except:
+            if 'tiff_path' in locals() and os.path.exists(tiff_path):
+                os.unlink(tiff_path)
+        except Exception:
             pass
+
 
 @app.route('/preview_image')
 def preview_image():
