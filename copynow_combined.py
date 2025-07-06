@@ -208,22 +208,18 @@ def copy_mode(device, mode):
     if not check_space(device, SRC, dst, mode):
         return
 
-    # Helper function to check for duplicate files in directory
-    def has_duplicate_file(directory, target_size, target_mtime, exclude=None):
-        if not os.path.exists(directory):
-            return False
-        for fname in os.listdir(directory):
-            if exclude and fname == exclude:
-                continue
-            fpath = os.path.join(directory, fname)
-            if os.path.isfile(fpath):
-                try:
-                    fsize = os.path.getsize(fpath)
-                    fmtime = os.path.getmtime(fpath)
-                    if fsize == target_size and fmtime == target_mtime:
-                        return True
-                except OSError:
-                    continue
+
+    def has_duplicate_file(directory, target_size, target_mtime, filename):
+        """Only skip if a file with *same name*, size, and mtime exists"""
+        fpath = os.path.join(directory, filename)
+        if os.path.exists(fpath):
+            try:
+                fsize = os.path.getsize(fpath)
+                fmtime = os.path.getmtime(fpath)
+                if fsize == target_size and fmtime == target_mtime:
+                    return True
+            except OSError:
+                return False
         return False
 
     # First gather all source files
@@ -297,7 +293,7 @@ def copy_mode(device, mode):
         dest_file = os.path.basename(destp)
         
         # Check for existing file with same content
-        if has_duplicate_file(dest_dir, src_size, src_mtime):
+        if has_duplicate_file(dest_dir, src_size, src_mtime, dest_file):
             action = 'Skip'
         else:
             # Check if original destination exists and is different
