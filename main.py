@@ -296,10 +296,22 @@ def handle_reporting_mode():
     time.sleep(1.0)
 
 def handle_chkfile_mode():
-    # Same functionality as WebUI Backup
+    font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)
+
+    # Keep checking until a disk is connected or LEFT is pressed
+    while True:
+        partitions = get_usb_partitions(exclude_disk="mmcblk")
+        if partitions:
+            break  # Disk connected — proceed
+        if button_left.is_pressed:
+            time.sleep(0.2)
+            return  # Go back to main menu
+        display_message("Connect Disk to", "Start Validation")
+        time.sleep(1)
+
+    # Proceed as usual when disk is found
     ip_address = HARD_CODED_IP
     start_hostapd_service()
-    font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)
     display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "Then [KEY3]", font_icons=font_icons)
 
     # Wait for KEY3 press and release to proceed
@@ -308,12 +320,12 @@ def handle_chkfile_mode():
     while not button_key3.is_pressed:
         time.sleep(0.1)
     while button_key3.is_pressed:
-        time.sleep(0.1)  # Wait until released
+        time.sleep(0.1)
 
     start_flask_service()
     display_qr_code(f"http://192.168.0.1:5000/chkfiles", mode="checkfiles")
 
-    # Wait for KEY3 press and release to exit
+    # Wait for KEY3 again to exit
     while not button_key3.is_pressed:
         time.sleep(0.5)
     while button_key3.is_pressed:
@@ -322,15 +334,10 @@ def handle_chkfile_mode():
     stop_flask_service()
     display_message_wifi_oled("ChkFiles", "Stopped", "Returning ...", font_icons=font_icons)
     time.sleep(2)
-    # Wait until KEY2 is fully released before returning to main loop
     while button_key3.is_pressed:
         time.sleep(0.5)
-    # Final cooldown to prevent accidental retrigger
     time.sleep(1.0)
 
-def confirm_reset():
-    options = ["Cancel", "Confirm"]
-    index = 0
 
     while True:
         with canvas(device) as draw:
