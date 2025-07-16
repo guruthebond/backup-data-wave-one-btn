@@ -31,7 +31,7 @@ compile_and_move() {
 }
 
 # Compile and process files in /backup-data
-compile_and_move "/backup-data" main.py copynow.py copynow_dated.py copynow_combined.py error_handler.py startup.py reset.py report.py report_dated.py
+compile_and_move "/backup-data" main.py copynow_combined.py error_handler.py startup.py reset.py report.py report_dated.py
 
 # Compile and process files in /backup-data/web-ui
 compile_and_move "/backup-data/web-ui" app.py report_webui.py
