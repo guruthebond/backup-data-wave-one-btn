@@ -211,7 +211,7 @@ button_key3 = Button(21, bounce_time=0.3)  # KEY1 for brightness control
 button_key2 = Button(20, bounce_time=0.3)  # KEY2 for reporting/WebUI
 button_key1 = Button(16, bounce_time=0.3)  # KEY3 for settings menu
 
-menu_items = ["\uf0c5 Just Copy", "\uf133 Dated Copy", "\uf15c Copy History", "\uf1c0 Disk Info", "\uf7b9 Disk Check", "\uf1eb WebUI Backup","\uf013 Settings"]
+menu_items = ["\uf0c5 Just Copy", "\uf133 Dated Copy", "\uf15c Copy History", "\uf1c0 Disk Info", "\uf7b9 Disk Check","\uf013 Settings"]
 shutdown_menu_items = ["\uf28d Shutdown", "\uf021 Reboot", "\uf28d Cancel"]
 settings_menu_items = ["\uf129 Version", "\uf56d Update", "\uf021 Reboot", "\uf28d Shutdown", "\uf017 Set Time", "\uf2f1 Factory Reset", "\uf28d Back"]
 selected_index = 0
@@ -220,99 +220,68 @@ def handle_brightness_control():
     global current_brightness, brightness_index
 
     last_press_time = time.time()
-    timeout = 1  # seconds of inactivity before exiting
+    timeout = 1  # seconds before auto-exit
+
+    total_blocks = len(brightness_states)
+    block_size = 10
+    block_spacing = 4
+    total_width = total_blocks * block_size + (total_blocks - 1) * block_spacing
+    blocks_x = (device.width - total_width) // 2
+    blocks_y = 42
 
     while True:
         now = time.time()
 
-        # If button is pressed, update brightness
         if button_key1.is_pressed:
-            # Debounce: wait for release
             while button_key1.is_pressed:
                 time.sleep(0.05)
-
-            brightness_index = (brightness_index + 1) % len(brightness_states)
+            brightness_index = (brightness_index + 1) % total_blocks
             current_brightness = brightness_states[brightness_index]
             device.contrast(current_brightness)
-            last_press_time = now  # reset timeout clock
+            last_press_time = now
 
-        # Draw UI
+        # Date, time, UTC
+        now_dt = datetime.datetime.now()
+        date_str = now_dt.strftime("%d %b %Y")
+        time_str = now_dt.strftime("%H:%M:%S")
+        offset_str = get_utc_offset()
+        time_line = f"{time_str}  {offset_str}"
+
         with canvas(device) as draw:
-            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+            # Top white rectangle
+            draw.rectangle((0, 0, device.width, 26), outline="white", fill="white")
 
-            heading = "Brightness"
-            heading_width = draw.textlength(heading, font=font_heading)
-            heading_x = (device.width - heading_width) // 2
-            draw.text((heading_x, 2), heading, font=font_heading, fill="white")
-            draw.line((0, 18, device.width, 18), fill="white")
+            # Centered date
+            date_x = (device.width - draw.textlength(date_str, font=font_small)) // 2
+            draw.text((date_x, 2), date_str, font=font_small, fill="black")
 
-            level_text = f"Level {brightness_index + 1} / {len(brightness_states)}"
-            level_width = draw.textlength(level_text, font=font_medium)
-            level_x = (device.width - level_width) // 2
-            draw.text((level_x, 26), level_text, font=font_medium, fill="white")
+            # Centered time + zone
+            time_x = (device.width - draw.textlength(time_line, font=font_small)) // 2
+            draw.text((time_x, 14), time_line, font=font_small, fill="black")
 
-            footer1 = "Press again to adjust"
-            footer2 = "Auto exit in 1 sec"
-            draw.text(((device.width - draw.textlength(footer1, font=font_small)) // 2, 44), footer1, font=font_small, fill="white")
-            draw.text(((device.width - draw.textlength(footer2, font=font_small)) // 2, 54), footer2, font=font_small, fill="white")
+            # Divider
+            draw.line((0, 27, device.width, 27), fill="white")
 
-        # Exit if timeout
+            # Brightness squares (filled and empty)
+            for i in range(total_blocks):
+                x = blocks_x + i * (block_size + block_spacing)
+                if i <= brightness_index:
+                    draw.rectangle((x, blocks_y, x + block_size, blocks_y + block_size), fill="white")
+                else:
+                    draw.rectangle((x, blocks_y, x + block_size, blocks_y + block_size), outline="white", fill=None)
+
         if now - last_press_time > timeout:
             break
 
         time.sleep(0.1)
 
-def handle_reporting_mode():
-    # Same functionality as WebUI Backup
-    ip_address = HARD_CODED_IP
-    start_hostapd_service()
-    font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)
-    display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "Then [KEY2]", font_icons=font_icons)
-
-    # Wait for KEY2 press and release to proceed
-    while button_key2.is_pressed:
-        time.sleep(0.1)
-    while not button_key2.is_pressed:
-        time.sleep(0.1)
-    while button_key2.is_pressed:
-        time.sleep(0.1)  # Wait until released
-
-    start_flask_service()
-    display_qr_code(f"http://192.168.0.1:5000/report", mode="reporting")
-
-    # Wait for KEY2 press and release to exit
-    while not button_key2.is_pressed:
-        time.sleep(0.5)
-    while button_key2.is_pressed:
-        time.sleep(0.5)
-
-    stop_flask_service()
-    display_message_wifi_oled("Reporting", "Stopped", "Returning ...", font_icons=font_icons)
-    time.sleep(2)
-    # Wait until KEY2 is fully released before returning to main loop
-    while button_key2.is_pressed:
-        time.sleep(0.5)
-    # Final cooldown to prevent accidental retrigger
-    time.sleep(1.0)
-
 def handle_chkfile_mode():
     font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)
-
-    # Keep checking until a disk is connected or LEFT is pressed
-    while True:
-        partitions = get_usb_partitions(exclude_disk="mmcblk")
-        if partitions:
-            break  # Disk connected — proceed
-        if button_left.is_pressed:
-            time.sleep(0.2)
-            return  # Go back to main menu
-        display_message("Connect Disk to", "Start Validation")
-        time.sleep(1)
 
     # Proceed as usual when disk is found
     ip_address = HARD_CODED_IP
     start_hostapd_service()
-    display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "Then [KEY3]", font_icons=font_icons)
+    display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "& Press WebUI", font_icons=font_icons)
 
     # Wait for KEY3 press and release to proceed
     while button_key3.is_pressed:
@@ -323,7 +292,7 @@ def handle_chkfile_mode():
         time.sleep(0.1)
 
     start_flask_service()
-    display_qr_code(f"http://192.168.0.1:5000/chkfiles", mode="checkfiles")
+    display_qr_code(f"http://192.168.0.1", mode="checkfiles")
 
     # Wait for KEY3 again to exit
     while not button_key3.is_pressed:
@@ -332,12 +301,16 @@ def handle_chkfile_mode():
         time.sleep(0.5)
 
     stop_flask_service()
-    display_message_wifi_oled("ChkFiles", "Stopped", "Returning ...", font_icons=font_icons)
+    display_message_wifi_oled("WebUI", "Stopped", "Returning ...", font_icons=font_icons)
     time.sleep(2)
     while button_key3.is_pressed:
         time.sleep(0.5)
     time.sleep(1.0)
 
+
+def confirm_reset():
+    options = ["Cancel", "Confirm"]
+    index = 0
 
     while True:
         with canvas(device) as draw:
@@ -1112,6 +1085,7 @@ def stop_flask_service():
 
     subprocess.run(['sudo', 'umount', '/mnt/usb/source'])
     subprocess.run(['sudo', 'umount', '/mnt/usb/destination'])
+    subprocess.run(['sudo', 'umount', '/mnt/usb/check'])
 
 # Hardcoded IP address
 HARD_CODED_IP = "192.168.0.1"
@@ -1210,9 +1184,10 @@ def display_qr_code(url, mode="wifi"):
         ]
     elif mode == "checkfiles":
         labels = [
-            'Conn Wifi "BackMeUp"',
-            "Then Scan QR Code",
-            "Media Validation"
+            '1. Conn Wifi BackMeUp',
+            "2. Then Scan QR Code",
+            "To Access WebUI",
+            "Press WebUI to Exit"
         ]
     else:
         labels = [
@@ -1278,6 +1253,7 @@ def get_partition_label(device):
         print(f"Error fetching label for {device_path}: {e}")  # Debug print
         label = None
     return label[:5] if label else "No Label"
+
 
 def get_partition_info(mount_point):
     """
@@ -1552,8 +1528,11 @@ def navigate_menu(menu, title="PurrfectBackup", check_special_buttons=True):
                 
             if button_key2.is_pressed:
                 #handle_reporting_mode()
+                disk_info_menu()
                 time.sleep(0.5)
-                return "KEY2"
+                selected_index = 0
+                prev_index = -1
+                #return "KEY2"
                 
             if button_key3.is_pressed:
                 time.sleep(0.5)
@@ -2004,7 +1983,7 @@ def main():
 
                 time.sleep(0.5)  # Debounce
                 start_flask_service()
-                display_qr_code(f"http://{ip_address}:5000", mode="wifi")
+                display_qr_code(f"http://{ip_address}/main", mode="wifi")
 
                 while not button_left.is_pressed:
                     time.sleep(0.1)
