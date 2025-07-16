@@ -87,6 +87,33 @@
         .dark-mode-toggle:hover {
             background: #555;
         }
+
+   /* DARK MODE fix for PNG icons */
+    body.dark-mode .action-img {
+        background-color: #1e1e1e;
+        padding: 6px;
+        border-radius: 12px;
+        box-shadow: 0 0 4px rgba(255, 255, 255, 0.1);
+        filter: brightness(1.2) contrast(1.2); /* enhances blue icons */
+    }
+
+    /* Optional: clean light mode (no extra filters on icons) */
+    body.light-mode .action-img {
+        filter: none;
+    }
+
+    /* Optional: improve action-card background in dark mode */
+    body.dark-mode .action-card {
+        background-color: #1e1e1e;
+        border: 1px solid #444;
+    }
+
+    body.light-mode .action-card {
+        background-color: #fff;
+        border: 1px solid #ddd;
+    }
+
+
     </style>
 </head>
 <body class="light-mode">
@@ -100,8 +127,19 @@
          alt="PuffrectBakup Logo" width="250" height="35">
 </div>
 </div>
-    <!-- Navigation Bar -->
+
+ <!-- Navigation Bar -->
     <nav class="navbar navbar-expand navbar-light" id="mainNavbar">
+        <div class="container-fluid">
+            <ul class="navbar-nav mx-auto">
+                <li class="nav-item">
+                <a class="nav-link" href="/">
+                        <img src="{{ url_for('static', filename='icons/house-fill.svg') }}" class="icon" alt="Home">
+                        Home
+                    </a>
+                </li>
+            </ul>
+        </div>
     </nav>
     <!-- Main Content Container -->
     <div class="container">
