@@ -104,22 +104,17 @@
         <div class="container-fluid">
             <ul class="navbar-nav mx-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('index') }}">
+
+<a class="nav-link" href="/">
                         <img src="{{ url_for('static', filename='icons/house-fill.svg') }}" class="icon" alt="Home">
                         Home
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('logs') }}">
-                        <img src="{{ url_for('static', filename='icons/journal-text.svg') }}" class="icon" alt="Logs">
-                        History
                     </a>
                 </li>
                 <!-- DELETE BELOW FOR STD. MODE li to li -->
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('progress_page') }}">
-                        <img src="{{ url_for('static', filename='icons/clipboard-check.svg') }}" class="icon" alt="Check Progress">
-                        Status
+                        <img src="{{ url_for('static', filename='icons/arrow-repeat.svg') }}" class="icon" alt="Check Progress">
+                        WebCopyStatus
                     </a>
                 </li>
             </ul>
