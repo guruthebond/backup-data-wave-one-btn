@@ -509,10 +509,9 @@
 <!-- Browse Container (shown after mounting) -->
 {% if current_path %}
 <div class="browse-container">
-    <h2 class="text-secondary text-center fw-normal mb-3" style="font-size: 1.1rem;">
-        Browse: {{ display_path if display_path else '/' }}
-    </h2>
-    
+   <h2 class="text-secondary text-center fw-normal mb-3" style="font-size: 1.1rem;">
+    Browse <span class="fw-bold text-primary">[{{ disk_label }}]</span>: {{ display_path if display_path else '/' }}
+</h2> 
     <!-- Back Button -->
     {% if parent_folder %}
         <div class="mb-3">
