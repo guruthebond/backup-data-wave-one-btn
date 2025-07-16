@@ -3,146 +3,289 @@
 {% block title %}Folder Selection{% endblock %}
 
 {% block content %}
+<!-- Include Bootstrap -->
+<link rel="stylesheet" href="/bootstrap-5.3.3-dist/css/bootstrap.min.css">
+<script src="/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+
 <style>
+    /* Copy all the CSS styles from checkfiles.html here */
+    :root {
+        --card-bg: #ffffff;
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --text-primary: #2d3748;
+        --text-secondary: #4a5568;
+        --border-color: #e2e8f0;
+        --primary-color: #4299e1;
+        --hover-bg: #f7fafc;
+        --browse-section-bg: #f0f9ff;
+        --copy-section-bg: #fff6f6;
+        --create-section-bg: #f6fff6;
+        --section-heading-bg: #f8f9fa;
+    }
+
+    body.dark-mode {
+        --card-bg: #2d3748;
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        --text-primary: #f8f9fa;
+        --text-secondary: #cbd5e0;
+        --border-color: #4a5568;
+        --primary-color: #63b3ed;
+        --hover-bg: #3c4657;
+        --browse-section-bg: #1a365d;
+        --copy-section-bg: #4a1c1c;
+        --create-section-bg: #1d4537;
+        --section-heading-bg: #343a40;
+    }
+
     .form-container {
-        max-width: 800px;
+        max-width: 1000px;
         margin: 2rem auto;
         padding: 2rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #e6f7ff;
-        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        background: var(--card-bg);
+        box-shadow: var(--card-shadow);
     }
 
-    body.dark-mode .form-container {
-        background-color: #333;
-        border: 1px solid #555;
-        color: #f1f1f1;
-    }
     .form-container-browse {
-        max-width: 800px;
+        max-width: 1000px;
         margin: 2rem auto;
         padding: 2rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #C0C0C0;
-        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        background: var(--browse-section-bg);
+        box-shadow: var(--card-shadow);
     }
 
-    body.dark-mode .form-container-browse {
-        background-color: #333;
-        border: 1px solid #555;
-        color: #f1f1f1;
+    .form-container-copy {
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 2rem;
+        border-radius: 12px;
+        background: var(--copy-section-bg);
+        box-shadow: var(--card-shadow);
     }
-    h1 {
-        text-align: center;
-        margin-bottom: 1.5rem;
-        font-size: 1.8rem;
+
+    .form-container-create {
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 2rem;
+        border-radius: 12px;
+        background: var(--create-section-bg);
+        box-shadow: var(--card-shadow);
+    }
+
+    .page-title {
+        font-size: 1.5rem;
         font-weight: 600;
-        color: #333;
-        background-color: #fff;
-        padding: 0.5rem;
-        border-radius: 8px;
-        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    body.dark-mode h1 {
-        color: #f1f1f1;
-        background-color: #444;
-    }
-    h2 {
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
         text-align: center;
-        margin-bottom: 1.5rem;
-        font-size: 1.4rem;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
         font-weight: 600;
-        color: #333;
-        background-color: #fff;
-        padding: 0.5rem;
-        border-radius: 8px;
-        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+        color: var(--text-primary);
+        margin: 1.5rem 0 1rem;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        background-color: var(--section-heading-bg);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
-    body.dark-mode h2 {
-        color: #f1f1f1;
-        background-color: #444;
-    }
-
-    .form-group {
+    .folders-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
         margin-bottom: 1.5rem;
     }
 
-    .form-group input[type="radio"] {
-        margin-right: 10px;
-    }
-
-    .form-group label {
-        display: inline-block;
-        font-size: 1rem;
-    }
-
-    body.dark-mode .form-group label {
-        color: #f1f1f1;
-    }
-
-    .form-group input[type="text"] {
-        width: 80%;
-        padding: 10px;
-        font-size: 1rem;
-        margin-top: 0.5rem;
-        border-radius: 5px;
-        border: 1px solid #ddd;
-    }
-
-    body.dark-mode .form-group input[type="text"] {
-        border: 1px solid #555;
-        background-color: #444;
-        color: #f1f1f1;
-    }
-
-    .form-group button {
-        padding: 12px;
+    .folder-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
         width: 100%;
-        font-size: 1.2rem;
     }
 
-    .form-container button {
+    .folder-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 1.2rem;
+        word-break: break-word;
+        white-space: normal;
+        flex-grow: 1;
+    }
+
+    .folder-size {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        margin-left: auto; /* Pushes size to the right */
+        padding-right: 1rem; /* Space before delete icon */
+    }
+
+    .delete-link-container {
+        margin-left: auto; /* Pushes delete to far right */
+    }
+
+    .folder-card {
+        display: flex;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.2s ease;
+        background: var(--card-bg);
+        width: 100%;
+        min-height: 90px;
+    }
+
+    .folder-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .folder-link {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        height: 100%;
+        width: 100%;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .folder-icon {
+        padding: 1.5rem;
+        min-width: 90px;
+        background-color: rgba(66, 153, 225, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .folder-icon svg {
+        width: 48px;
+        height: 48px;
+        color: var(--primary-color);
+    }
+
+    .folder-info {
+        padding: 1.2rem;
+        flex-grow: 1;
+    }
+
+    .folder-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+        font-size: 1.2rem;
+        word-break: break-word;
+        white-space: normal;
+    }
+
+    .folder-meta {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+
+    .file-list-container {
         margin-top: 1.5rem;
     }
 
+    .file-row {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s ease;
+        min-height: 60px;
+    }
+
+    .file-row:last-child {
+        border-bottom: none;
+    }
+
+    .file-row:hover {
+        background-color: var(--hover-bg);
+    }
+
+    .file-icon {
+        width: 32px;
+        height: 32px;
+        margin-right: 1rem;
+        color: var(--primary-color);
+        flex-shrink: 0;
+    }
+
+    .file-info {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .file-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 1.1rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .file-meta {
+        display: flex;
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+        gap: 1rem;
+    }
+
+    .file-action {
+        margin-left: 1rem;
+        flex-shrink: 0;
+    }
+
+    .file-action button {
+        font-size: 0.95rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    }
+
+    /* Progress bar */
     #progress_bar {
         width: 100%;
         height: 20px;
-        background-color: #ddd;
+        background-color: var(--border-color);
         border-radius: 5px;
         margin-top: 2rem;
     }
 
-    body.dark-mode #progress_bar {
-        background-color: #555;
-    }
-
     #progress_bar_inner {
         height: 100%;
-        background-color: #4CAF50;
+        background-color: var(--primary-color);
         width: 0%;
         border-radius: 5px;
+        transition: width 0.3s ease;
     }
 
-    .disabled-button {
-        pointer-events: none;
-        background-color: #6c757d;
-    }
-
-    /* Start Copy Button - Same as in index.html */
+    /* Buttons */
     .start-copy-btn {
         padding: 12px 25px;
         font-size: 1.2rem;
-        background-color: #007bff;
+        background-color: var(--primary-color);
         color: white;
         border: none;
         border-radius: 5px;
         cursor: pointer;
         transition: background-color 0.3s ease;
+        width: 100%;
+        margin-top: 1.5rem;
     }
 
     .start-copy-btn:disabled {
@@ -154,7 +297,6 @@
         background-color: #0056b3;
     }
 
-    /* Create Folder Button (Smaller version of Start Copy) */
     .create-folder-btn {
         padding: 8px 18px;
         font-size: 1rem;
@@ -164,53 +306,15 @@
         border-radius: 5px;
         cursor: pointer;
         transition: background-color 0.3s ease;
-        width: auto;
+        width: 100%;
         margin-top: 1rem;
     }
 
-    .create-folder-btn:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
-    }
-
-    .create-folder-btn:hover:not(:disabled) {
+    .create-folder-btn:hover {
         background-color: #218838;
     }
 
-    /* Create Folder Box */
-    .create-folder-box {
-        padding: 1.5rem;
-        margin: 2rem auto;
-        margin-top: 2rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #f0f8f0;
-        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-        max-width: 800px;
-    }
-
-    body.dark-mode .create-folder-box {
-        background-color: #333;
-        border: 1px solid #555;
-    }
-
-    .create-folder-box h3 {
-        font-size: 1.4rem;
-        color: #333;
-        margin-bottom: 1rem;
-    }
-
-    body.dark-mode .create-folder-box h3 {
-        color: #f1f1f1;
-    }
-
-    .folder-table td a.start-copy-btn {
-    display: block;
-    width: 100%;
-        }
-
-
-    /* Table for displaying folders */
+    /* Tables */
     .folder-table {
         width: 100%;
         border-collapse: collapse;
@@ -220,136 +324,211 @@
     .folder-table th, .folder-table td {
         padding: 12px;
         text-align: left;
-        border-bottom: 1px solid #ddd;
-    }
-
-    body.dark-mode .folder-table th, body.dark-mode .folder-table td {
-        border-bottom: 1px solid #555;
+        border-bottom: 1px solid var(--border-color);
     }
 
     .folder-table th {
-        background-color: #f2f2f2;
+        background-color: var(--hover-bg);
         font-weight: 600;
     }
 
-    body.dark-mode .folder-table th {
-        background-color: #444;
-        color: #f1f1f1;
+    /* Action cells */
+    .action-cell {
+        display: flex;
+        align-items: center;
     }
 
-    body.dark-mode .folder-table td {
-        color: #f1f1f1;
+    .delete-link {
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
-</style>
 
-<script>
-    function checkSelection() {
-        const sourceFolder = document.querySelector('input[name="source_folder"]:checked');
-        const destinationFolder = document.querySelector('input[name="destination_folder"]:checked');
-        const copyButton = document.getElementById("copyButton");
+    .delete-icon {
+        width: 20px;
+        height: 20px;
+        transition: transform 0.3s ease;
+    }
 
-        if (sourceFolder && destinationFolder) {
-            document.getElementById("selected_source_folder").value = sourceFolder.value;
-            document.getElementById("selected_destination_folder").value = destinationFolder.value;
-            copyButton.disabled = false;
-        } else {
-            copyButton.disabled = true;
+    body.dark-mode .delete-icon {
+        filter: invert(1);
+    }
+
+    .delete-icon:hover {
+        transform: scale(1.1);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .form-container, .form-container-browse, .form-container-copy, .form-container-create {
+            margin: 1rem;
+            padding: 1rem;
+        }
+
+        .folder-icon {
+            padding: 1.2rem;
+            min-width: 80px;
+        }
+        
+        .folder-icon svg {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .folder-name {
+            font-size: 1.1rem;
+        }
+        
+        .folder-meta {
+            font-size: 0.95rem;
+        }
+        
+        .file-name {
+            font-size: 1.05rem;
+        }
+        
+        .file-meta {
+            font-size: 0.9rem;
         }
     }
 
-    function updateProgress() {
-        fetch('/progress')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById("progress_bar_inner").style.width = `${data.overall_progress}%`;
-
-                if (data.overall_progress > 0 && data.overall_progress < 100) {
-                    document.getElementById("createDestinationFolderForm").classList.add("disabled");
-                } else {
-                    document.getElementById("createDestinationFolderForm").classList.remove("disabled");
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching progress:', error);
-            });
+    /* Mobile alignment for browse folder meta */
+    @media (max-width: 768px) {
+        .folder-info .folder-meta {
+            text-align: left;
+            justify-content: flex-start;
+            padding-left: 0;
+        }
     }
 
-    setInterval(updateProgress, 1000); // Update every second
-</script>
+    @media (max-width: 480px) {
+        .folder-icon {
+            padding: 1rem;
+            min-width: 70px;
+        }
+        
+        .folder-icon svg {
+            width: 36px;
+            height: 36px;
+        }
+        
+        .folder-name {
+            font-size: 1rem;
+        }
+        
+        .folder-meta {
+            font-size: 0.9rem;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
 
+        .file-row {
+            padding: 0.8rem;
+        }
+        
+        .file-name {
+            font-size: 1rem;
+        }
+        
+        .file-meta {
+            font-size: 0.85rem;
+        }
+    }
+</style>
+
+<!-- Browse Container -->
 <div class="form-container-browse">
-    <!---<h2>Select Folders</h2>
-        <!-- Separate Browse Section -->
-        <!-- Browse Table -->
-    <h1>Browse Folders</h1>
-    <table class="folder-table">
-    <tbody>
-        <tr>
-            <td style="text-align: center;">
-                <a href="{{ url_for('browse_folder', base_path='/mnt/usb/source', home_url=session['home_url']) }}" class="start-copy-btn">Source Files</a>
-            </td>
-        </tr>
-        <tr>
-            <td style="text-align: center;">
-                <a href="{{ url_for('browse_folder', base_path='/mnt/usb/destination', home_url=session['home_url']) }}" class="start-copy-btn">Destination Files</a>
-            </td>
-        </tr>
-    </tbody>
-</table>
-</div>
-<!-- Create Copy Box - DELETE BELOW FOR STD. MODE -->
-<div class="form-container">
-    <!-- Source Folders Table -->
-    <h1>Copy File via Web UI</h1>
-    <h2>Source [{{ source_label }}]</h2>
-    <table class="folder-table">
-        <thead>
-            <tr>
-                <th>Select</th>
-                <th>Folder Name</th>
-                <th>Size</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for folder in source_folders %}
-                <tr>
-                    <td><input type="radio" name="source_folder" value="{{ folder.name }}" required onchange="checkSelection()"></td>
-                    <td>{{ folder.name }}</td>
-                    <td>{{ folder.size }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <h1 class="page-title">Browse Folders</h1>
+    
+    <div class="folders-grid">
+        <div class="folder-card">
+            <a href="{{ url_for('browse_folder', base_path='/mnt/usb/source', home_url=session['home_url']) }}" class="folder-link">
+                <div class="folder-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                    </svg>
+                </div>
+                <div class="folder-info">
+                    <div class="folder-name">Source Files</div>
+                    <div class="folder-meta">Browse source files</div>
+                </div>
+            </a>
+        </div>
 
-    <!-- Destination Folders Table -->
-    <h2>Destination [{{ destination_label }}]</h2>
-    <table class="folder-table">
-        <thead>
-            <tr>
-                <th>Select</th>
-                <th>Folder Name</th>
-                <th>Size</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for folder in destination_folders %}
-                <tr>
-                    <td><input type="radio" name="destination_folder" value="{{ folder.name }}" required onchange="checkSelection()"></td>
-                    <td>{{ folder.name }}</td>
-                    <td>{{ folder.size }}</td>
-                    <td class="action-cell">
-                        <a href="#" onclick="confirmDeletion('{{ folder.name }}', '{{ folder.name }}')" class="delete-link">
-                            <img src="{{ url_for('static', filename='icons/delete.svg') }}" alt="Delete" class="delete-icon">
-                        </a>
-                        <form method="POST" action="/delete_folder" id="deleteForm_{{ folder.name }}" style="display: none;">
-                            <input type="hidden" name="folder_name" value="{{ folder.name }}">
-                        </form>
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        <div class="folder-card">
+            <a href="{{ url_for('browse_folder', base_path='/mnt/usb/destination', home_url=session['home_url']) }}" class="folder-link">
+                <div class="folder-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                    </svg>
+                </div>
+                <div class="folder-info">
+                    <div class="folder-name">Destination Files</div>
+                    <div class="folder-meta">Browse destination files</div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Container -->
+<div class="form-container-copy">
+    <h1 class="page-title">Copy File via Web UI</h1>
+    
+    <!-- Source Folders Section -->
+    <h2 class="section-title">Source [{{ source_label }}]</h2>
+    <div class="folders-grid">
+        {% for folder in source_folders %}
+            <div class="folder-card">
+                <div class="folder-link" style="cursor: default;">
+                    <div class="folder-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="folder-info">
+                            <div class="folder-header">
+                                    <input type="radio" name="source_folder" id="source_{{ loop.index }}" value="{{ folder.name }}" onchange="checkSelection()">
+                                    <label for="source_{{ loop.index }}" class="folder-name">{{ folder.name }}</label>
+                                    <span class="folder-size">{{ folder.size }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Destination Folders Section -->
+    <h2 class="section-title">Destination [{{ destination_label }}]</h2>
+    <div class="folders-grid">
+        {% for folder in destination_folders %}
+            <div class="folder-card">
+                <div class="folder-link" style="cursor: default;">
+                    <div class="folder-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                    </div>
+
+                    <div class="folder-info">
+                        <div class="folder-header">
+                            <input type="radio" name="destination_folder" id="dest_{{ loop.index }}" value="{{ folder.name }}" onchange="checkSelection()">
+                            <label for="dest_{{ loop.index }}" class="folder-name">{{ folder.name }}</label>
+                            <span class="folder-size">{{ folder.size }}</span>
+                            <div class="delete-link-container">
+                                <a href="#" onclick="confirmDeletion('{{ folder.name }}', '{{ folder.name }}')" class="delete-link">
+                                    <img src="{{ url_for('static', filename='icons/delete.svg') }}" alt="Delete" class="delete-icon">
+                                </a>
+                                <form method="POST" action="/delete_folder" id="deleteForm_{{ folder.name }}" style="display: none;">
+                                    <input type="hidden" name="folder_name" value="{{ folder.name }}">
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
 
     <!-- Start Copy Button -->
     <form method="POST" action="/start_copy">
@@ -364,22 +543,16 @@
     </div>
 </div>
 
-<!-- Create Folder Box - DELETE BELOW FOR STD. MODE -->
-<div class="create-folder-box">
-    <h3>Add folder in destination disk</h3>
+<!-- Create Folder Container -->
+<div class="form-container-create">
+    <h2 class="section-title">Add folder in destination disk</h2>
     <form method="POST" action="/create_folder" id="createDestinationFolderForm">
-        <div class="form-group">
-            <!---<label for="new_destination_folder">Name of folder in Destination Disk:</label> -->
-            <input type="text" id="new_destination_folder" name="new_folder_name" placeholder="Type name of folder here ...">
+        <div class="mb-3">
+            <input type="text" class="form-control" id="new_destination_folder" name="new_folder_name" placeholder="Type name of folder here ...">
             <input type="hidden" name="mount_point" value="/mnt/usb/destination">
         </div>
         <button type="submit" class="create-folder-btn">Create in Destination</button>
     </form>
-</div>
-
-<!-- Progress Bar - DELETE BELOW FOR STD. MODE -->
-<div id="progress_bar">
-    <div id="progress_bar_inner"></div>
 </div>
 
 <script>
@@ -414,90 +587,17 @@
             });
     }
 
-    setInterval(updateProgress, 1000); // Update every second
+    setInterval(updateProgress, 1000);
 
     function confirmDeletion(folderName, formId) {
         const confirmation = prompt(`Please type the name of the folder to confirm deletion: ${folderName}`);
         if (confirmation !== null) {
             if (confirmation === folderName) {
-                document.getElementById(`deleteForm_${formId}`).submit(); // Submit the form
+                document.getElementById(`deleteForm_${formId}`).submit();
             } else {
                 alert('Folder name does not match. Deletion cancelled.');
             }
         }
     }
 </script>
-
-<!-- CSS for Buttons -->
-<style>
-    .action-cell {
-        align-items: left;
-    }
-
-    body.dark-mode .delete-icon { background-color: white; border-radius: 5px; padding: 1px; }
-
-    .delete-link {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .delete-icon {
-        width: 20px;
-        height: 20px;
-        transition: transform 0.3s ease;
-    }
-
-    .delete-icon:hover {
-        transform: scale(1.1);
-    }
-
-    .start-copy-btn {
-        padding: 5px 15px;
-        font-size: 1.1rem;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        text-decoration: none; /* Removes underline */
-        transition: background-color 0.3s ease;
-        min-width: 100%;
-    }
-
-    .start-copy-btn:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
-    }
-
-    .start-copy-btn:hover:not(:disabled) {
-        background-color: #0056b3;
-        text-decoration: none; /* Removes underline */
-    }
-
-    .create-folder-btn {
-        padding: 8px 18px;
-        font-size: 1rem;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-        width: auto;
-        margin-top: 1rem;
-        min-width: 100%;
-    }
-
-    .create-folder-btn:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
-    }
-
-    .create-folder-btn:hover:not(:disabled) {
-        background-color: #218838;
-    }
-</style>
-
-
 {% endblock %}
