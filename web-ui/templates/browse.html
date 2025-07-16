@@ -5,211 +5,280 @@
 {% block content %}
 {% set display_path = current_path.replace('/mnt/usb', '') %}
 
-<div class="browse-container">
-    <h1>Browse: {{ display_path if display_path else '/' }}</h1>
+<style>
+    /* Critical CSS to prevent icon flash */
+    .folder-icon {
+        contain: strict;
+        width: 90px;
+        height: 90px;
+        overflow: hidden;
+        padding: 1.5rem;
+        min-width: 90px;
+        background-color: rgba(66, 153, 225, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .folder-icon svg {
+        width: 48px;
+        height: 48px;
+        color: var(--primary-color);
+    }
+    .browse-container {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+</style>
 
+<div class="browse-container">
+    <h2 class="text-secondary text-center fw-normal mb-3" style="font-size: 1.1rem;">
+        Browse: {{ display_path if display_path else '/' }}
+    </h2>
+    
     <!-- Back Button -->
     {% if parent_folder %}
-        <div class="nav-buttons">
-            <a href="{{ url_for('browse_folder', base_path=request.args.get('base_path'), current_path=parent_folder) }}" class="nav-button back-button">
-                Go Back
+        <div class="mb-3">
+            <a href="{{ url_for('browse_folder', base_path=request.args.get('base_path'), current_path=parent_folder) }}"
+               class="btn btn-sm btn-outline-secondary d-inline-block"
+               style="font-size: 0.85rem; padding: 4px 10px;">
+               ← Go Back
             </a>
         </div>
     {% endif %}
 
     <!-- Folders Section -->
-    <div class="section">
-        <h2>Folders</h2>
-        <div class="items-list">
-            {% for folder in folders %}
-                <div class="item-row">
-                    <a href="{{ url_for('browse_folder', base_path=request.args.get('base_path'), current_path=folder.path) }}" class="item-link folder-item">
-                        <span class="item-name">{{ folder.name }}</span>
-                        <span class="item-size">{{ folder.size }}</span>
-                        <span class="item-action">Open</span>
-                    </a>
-                </div>
-            {% endfor %}
-        </div>
+    {% if folders %}
+    <h2 class="section-title">Folders</h2>
+    <div class="folders-grid">
+        {% for folder in folders %}
+            <div class="folder-card">
+                <a href="{{ url_for('browse_folder', base_path=request.args.get('base_path'), current_path=folder.path) }}" class="folder-link">
+                    <div class="folder-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="48" height="48">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="folder-info">
+                        <div class="folder-name">{{ folder.name }}</div>
+                        <div class="folder-meta">
+                            <span>{{ folder.size }}</span>
+                            <span>{{ folder.date.split(' ')[0] if folder.date else '' }}</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
     </div>
+    {% endif %}
 
     <!-- Files Section -->
-    <div class="section">
-        <h2>Files</h2>
-        <div class="items-list">
-            {% for file in files %}
-                <div class="item-row">
-                    <a href="#" class="item-link file-item" onclick="previewFile('{{ current_path }}/{{ file.name }}')">
-                        <span class="item-name">{{ file.name }}</span>
-                        <span class="item-size">{{ file.size }}</span>
-                        <span class="item-date">{{ file.date }}</span>
-                    </a>
+    {% if files %}
+    <h2 class="section-title">Files</h2>
+    <div class="file-list-container">
+        {% for file in files %}
+            <div class="file-row">
+                <svg class="file-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <div class="file-info">
+                    <div class="file-name">{{ file.name }}</div>
+                    <div class="file-meta">
+                        <span>{{ file.date.split(' ')[1] if file.date else '' }}</span>
+                        <span>{{ file.size }}</span>
+                    </div>
                 </div>
-            {% endfor %}
-        </div>
+                <div class="file-action">
+                    <button class="btn btn-sm btn-outline-primary"
+                            onclick="previewFile('{{ current_path }}/{{ file.name }}')"
+                            style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                        Preview
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
     </div>
+    {% else %}
+        <div class="empty-state" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+            <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="opacity: 0.5;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <h3 style="font-size: 1.1rem; margin-top: 0.5rem;">No files found</h3>
+            <p style="font-size: 0.9rem;">This folder is empty</p>
+        </div>
+    {% endif %}
 
     <!-- Back to Home Button -->
     <div class="nav-buttons">
-        <a href="{{ request.args.get('home_url', session.get('home_url', url_for('folder_selection'))) }}" class="nav-button home-button">
-            Back to Home
+        <a href="{{ request.args.get('home_url', session.get('home_url', url_for('folder_selection'))) }}" class="btn btn-primary">
+            Back to Folder Selection
         </a>
     </div>
 </div>
 
 <!-- Preview Modal -->
 <div id="previewModal" class="modal">
-    <div class="modal-content">
-        <span class="close-button" onclick="closeModal()">&times;</span>
-        <h2 id="previewFileName"></h2>
-        <div class="preview-container">
-            <img id="previewImage" style="max-width: 100%; max-height: 80vh;">
-            <div id="rawPreviewInfo"></div>
-        </div>
-    </div>
+  <div class="modal-body">
+    <h4 id="previewFileName" class="mb-3 text-white" style="font-size: 1.1rem;"></h4>
+    <img id="previewImage" class="preview-image" src="" alt="Preview">
+    <div id="rawPreviewInfo" class="text-white mb-3" style="font-size: 0.9rem;"></div>
+    <button class="close-btn" onclick="closeModal()">Close Preview</button>
+  </div>
 </div>
 
 <style>
+    :root {
+        --card-bg: #ffffff;
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --text-primary: #2d3748;
+        --text-secondary: #4a5568;
+        --border-color: #e2e8f0;
+        --primary-color: #4299e1;
+        --hover-bg: #f7fafc;
+    }
+
+    body.dark-mode {
+        --card-bg: #2d3748;
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        --text-primary: #f8f9fa;
+        --text-secondary: #cbd5e0;
+        --border-color: #4a5568;
+        --primary-color: #63b3ed;
+        --hover-bg: #3c4657;
+    }
+
     .browse-container {
-        max-width: 800px;
-        margin: 1rem auto;
+        max-width: 1000px;
+        margin: 2rem auto;
         padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        background: var(--card-bg);
+        box-shadow: var(--card-shadow);
     }
 
-    body.dark-mode .browse-container {
-        background-color: #333;
-        border-color: #555;
-        color: #f1f1f1;
-    }
-
-    h1, h2 {
-        text-align: center;
+    .section-title {
+        font-size: 1.25rem;
         font-weight: 600;
-        color: #333;
-        margin: 0.5rem 0;
+        color: var(--text-primary);
+        margin: 1.5rem 0 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--primary-color);
     }
 
-    body.dark-mode h1, body.dark-mode h2 {
-        color: #f1f1f1;
+    .folders-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
     }
 
-    .section {
-        margin: 1.5rem 0;
-    }
-
-    .items-list {
+    .folder-card {
+        display: flex;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        transition: transform 0.2s ease;
+        background: var(--card-bg);
         width: 100%;
-        margin-top: 0.5rem;
+        min-height: 90px;
     }
 
-    .item-row {
+    .folder-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .folder-link {
         display: flex;
-        border-bottom: 1px solid #ddd;
-        padding: 0.75rem 0.5rem;
-    }
-
-    body.dark-mode .item-row {
-        border-bottom-color: #555;
-    }
-
-    .item-link, .file-item {
-        display: flex;
+        flex-direction: row;
+        align-items: center;
+        height: 100%;
         width: 100%;
         text-decoration: none;
         color: inherit;
-        cursor: pointer;
     }
 
-    .item-name {
-        flex: 1;
-        word-break: break-all;
-        padding-right: 0.5rem;
+    .folder-info {
+        padding: 1.2rem;
+        flex-grow: 1;
     }
 
-    .item-size {
-        min-width: 80px;
-        text-align: right;
-        padding: 0 0.5rem;
+    .folder-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+        font-size: 1.2rem;
+        word-break: break-word;
+        white-space: normal;
     }
 
-    .item-action {
-        min-width: 60px;
-        text-align: right;
-        color: #007bff;
-    }
-
-    body.dark-mode .item-action {
-        color: #4da6ff;
-    }
-
-    .folder-item:hover {
-        text-decoration: underline;
-    }
-
-    .file-item:hover {
-        background-color: rgba(0, 123, 255, 0.1);
-    }
-
-    body.dark-mode .file-item:hover {
-        background-color: rgba(77, 166, 255, 0.1);
-    }
-
-    .nav-buttons {
+    .folder-meta {
+        font-size: 1rem;
+        color: var(--text-secondary);
         display: flex;
-        justify-content: space-between;
-        margin: 1rem 0;
+        gap: 1.5rem;
+    }
+
+    .file-list-container {
+        margin-top: 1.5rem;
+    }
+
+    .file-row {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s ease;
+        min-height: 60px;
+    }
+
+    .file-row:last-child {
+        border-bottom: none;
+    }
+
+    .file-row:hover {
+        background-color: var(--hover-bg);
+    }
+
+    .file-icon {
+        width: 32px;
+        height: 32px;
+        margin-right: 1rem;
+        color: var(--primary-color);
+        flex-shrink: 0;
+    }
+
+    .file-info {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .file-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 1.1rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .file-meta {
+        display: flex;
+        font-size: 0.95rem;
+        color: var(--text-secondary);
         gap: 1rem;
     }
 
-    .nav-button {
-        display: inline-block;
-        padding: 0.6rem 1rem;
-        font-size: 1rem;
-        border-radius: 5px;
-        text-decoration: none;
-        text-align: center;
-        transition: background-color 0.2s;
-        flex: 1;
-        min-width: 120px;
-        box-sizing: border-box;
+    .file-action {
+        margin-left: 1rem;
+        flex-shrink: 0;
     }
 
-    .back-button {
-        background-color: #28a745;
-        color: white;
+    .file-action button {
+        font-size: 0.95rem;
+        padding: 0.5rem 1rem;
     }
 
-    .back-button:hover {
-        background-color: #218838;
-    }
-
-    .home-button {
-        background-color: #007bff;
-        color: white;
-    }
-
-    .home-button:hover {
-        background-color: #0056b3;
-    }
-
-    .item-date {
-        min-width: 140px;
-        text-align: right;
-        padding-left: 0.5rem;
-        font-size: 0.9rem;
-        color: #888;
-        font-style: italic;
-    }
-
-    body.dark-mode .item-date {
-        color: #ccc;
-    }
-
-    /* Modal styles */
     .modal {
         display: none;
         position: fixed;
@@ -218,108 +287,143 @@
         top: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.8);
+        overflow: auto;
+        background-color: rgba(0,0,0,0.6);
     }
-
-    .modal-content {
-        background-color: #fefefe;
-        margin: 5% auto;
-        padding: 20px;
-        border-radius: 8px;
-        width: 80%;
-        max-width: 900px;
-        position: relative;
-    }
-
-    body.dark-mode .modal-content {
-        background-color: #333;
-        color: #f1f1f1;
-    }
-
-    .close-button {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .close-button:hover {
-        color: #000;
-    }
-
-    body.dark-mode .close-button:hover {
-        color: #fff;
-    }
-
-    .preview-container {
-        margin-top: 20px;
+    
+    .modal-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
         text-align: center;
+        padding: 20px;
+    }
+    
+    .modal-body img {
+        max-width: 100%;
+        max-height: 70vh;
+        margin-bottom: 20px;
+        object-fit: contain;
+    }
+    
+    .close-btn {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.2s ease;
+    }
+    
+    .close-btn:hover {
+        background-color: #3182ce;
     }
 
-    /* Responsive adjustments */
-    @media (max-width: 600px) {
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
         .browse-container {
-            padding: 0.5rem;
-            margin: 0.5rem;
-            border: none;
-            box-shadow: none;
+            margin: 1rem;
+            padding: 1rem;
         }
 
-        h1 {
-            font-size: 1.4rem;
+        .folder-icon {
+            padding: 1.2rem;
+            min-width: 80px;
         }
-
-        h2 {
-            font-size: 1.2rem;
+        
+        .folder-icon svg {
+            width: 40px;
+            height: 40px;
         }
-
-        .item-row {
-            padding: 0.5rem 0.25rem;
+        
+        .folder-name {
+            font-size: 1.1rem;
+        }
+        
+        .folder-meta {
+            font-size: 0.95rem;
+        }
+        
+        .file-name {
+            font-size: 1.05rem;
+        }
+        
+        .file-meta {
             font-size: 0.9rem;
         }
+    }
 
-        .item-size {
+    @media (max-width: 480px) {
+        .folder-icon {
+            padding: 1rem;
             min-width: 70px;
-            font-size: 0.85rem;
         }
-
-        .item-action {
-            min-width: 50px;
-            font-size: 0.85rem;
+        
+        .folder-icon svg {
+            width: 36px;
+            height: 36px;
         }
-
-        .nav-button {
-            padding: 0.5rem 0.8rem;
+        
+        .folder-name {
+            font-size: 1rem;
+        }
+        
+        .folder-meta {
             font-size: 0.9rem;
-            min-width: 100px;
+            flex-direction: column;
+            gap: 0.3rem;
         }
 
-        .modal-content {
-            width: 95%;
-            margin: 10% auto;
+        .file-row {
+            padding: 0.8rem;
+        }
+        
+        .file-name {
+            font-size: 1rem;
+        }
+        
+        .file-meta {
+            font-size: 0.85rem;
         }
     }
 </style>
 
 <script>
+    // Show container after load
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelector('.browse-container').style.opacity = '1';
+    });
+
     function previewFile(filePath) {
         const modal = document.getElementById('previewModal');
         const fileNameDisplay = document.getElementById('previewFileName');
         const previewImage = document.getElementById('previewImage');
         const rawPreviewInfo = document.getElementById('rawPreviewInfo');
 
-        // Display the file name
         fileNameDisplay.textContent = filePath.split('/').pop();
-        
-        // Check if it's a RAW file (add more extensions as needed)
-        const rawExtensions = ['.cr2', '.cr3', '.nef', '.arw', '.dng', '.raf', '.orf', '.rw2'];
+
+        const rawExtensions = ['.cr2', '.cr3', '.nef', '.arw', '.dng', '.raf', '.orf', '.rw2', '.3fr'];
         const fileExt = filePath.toLowerCase().substring(filePath.lastIndexOf('.'));
-        
+
+        previewImage.src = '';
+        rawPreviewInfo.innerHTML = `
+            <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
         if (rawExtensions.includes(fileExt)) {
-            // It's a RAW file - we'll use exiftool to extract preview
-            rawPreviewInfo.innerHTML = '<p>Loading RAW preview...</p>';
-            
             fetch('/preview_raw?file=' + encodeURIComponent(filePath))
                 .then(response => response.blob())
                 .then(blob => {
@@ -327,20 +431,31 @@
                     previewImage.src = url;
                     rawPreviewInfo.innerHTML = '';
                 })
-                .catch(error => {
-                    rawPreviewInfo.innerHTML = '<p>Could not load RAW preview. This file type might not be supported.</p>';
-                    console.error('Error:', error);
+                .catch(() => {
+                    rawPreviewInfo.innerHTML = `
+                        <div class="alert alert-info">
+                            Could not load RAW preview. This file type might not be supported.
+                        </div>
+                    `;
                 });
-        } else if (fileExt === '.jpg' || fileExt === '.jpeg' || fileExt === '.png' || fileExt === '.gif') {
-            // It's a regular image - display directly
+        } else if (['.jpg', '.jpeg', '.png', '.gif'].includes(fileExt)) {
             previewImage.src = '/preview_image?file=' + encodeURIComponent(filePath);
-            rawPreviewInfo.innerHTML = '';
+            previewImage.onload = () => rawPreviewInfo.innerHTML = '';
+            previewImage.onerror = () => {
+                rawPreviewInfo.innerHTML = `
+                    <div class="alert alert-info">
+                        Could not load image preview.
+                    </div>
+                `;
+            };
         } else {
-            // Not a previewable file
-            previewImage.src = '';
-            rawPreviewInfo.innerHTML = '<p>File preview not available for this file type.</p>';
+            rawPreviewInfo.innerHTML = `
+                <div class="alert alert-info">
+                    File preview not available for this file type.
+                </div>
+            `;
         }
-        
+
         modal.style.display = 'block';
     }
 
