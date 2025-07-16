@@ -6,59 +6,66 @@ compile_and_move() {
     shift
     local files=("$@")
 
-    # Navigate to the target directory
     cd "$dir" || exit
-
-    # Compile Python files
     python -m compileall "${files[@]}"
 
-    # Move compiled files to the current directory and rename them properly
     for file in "${files[@]}"; do
-        # Extract filename without extension
         base_name="${file%.py}"
-
-        # Find the corresponding .pyc file (ignoring the Python version suffix)
         pyc_file=$(ls "__pycache__/${base_name}".*.pyc 2>/dev/null)
-
-        # If found, rename and move it
         if [[ -n "$pyc_file" ]]; then
             mv "$pyc_file" "${base_name}.pyc"
         fi
     done
 
-    # Clean up __pycache__ directory
     rm -rf __pycache__
 }
 
-# Compile and process files in /backup-data
+# Compile .py files
 compile_and_move "/backup-data" main.py copynow_combined.py error_handler.py startup.py reset.py report.py report_dated.py
-
-# Compile and process files in /backup-data/web-ui
 compile_and_move "/backup-data/web-ui" app.py report_webui.py
 
-
-# Update systemd services to use .pyc files
-#WebUI Service
+# Update systemd service files to reference .pyc instead of .py
 sed -i 's|\bapp\.py\b|app.pyc|g' /etc/systemd/system/web-ui-flask-app.service
-#Startup Service
 sed -i 's|\bstartup\.py\b|startup.pyc|g' /etc/systemd/system/backup-data.service
-#Reset Service
 sed -i 's|\breset\.py\b|reset.pyc|g' /etc/systemd/system/reset.service
-# Reload systemd to apply changes
 systemctl daemon-reload
 
-# Ask user if they want to delete all .py files
+# Ask user whether to delete .py files
 read -p "Do you want to delete all original .py files? (yes/no): " choice
 case "$choice" in
   yes|YES|y|Y )
     echo "Deleting original .py files..."
     find /backup-data /backup-data/web-ui -maxdepth 1 -name "*.py" -delete
     echo "All .py files deleted."
+
+    # Delete old backup directory if it exists
+    if [ -d "/root/backup-data-stable" ]; then
+        echo "Removing old /root/backup-data-stable..."
+        rm -rf /root/backup-data-stable
+    fi
+
+    # Create fresh system backup
+    echo "Creating system backup..."
+    echo "Backing up application data to /root/backup-data-stable..."
+    mkdir -p /root/backup-data-stable
+    rsync -a --exclude='myenv/' /backup-data/ /root/backup-data-stable/
+
+    mkdir -p /root/backup-data-services
+    cp /etc/systemd/system/backup-data.service \
+       /etc/systemd/system/web-ui-flask-app.service \
+       /etc/systemd/system/reset.service \
+       /root/backup-data-services/
+
+    rm -f /root/backup-data-stable/copy-log.csv
+    touch /root/backup-data-stable/copy-log.csv
+
+    rm -rf /root/backup-data-stable/web-ui/log/*
+    echo "System backup completed."
     ;;
   no|NO|n|N )
-    echo "Keeping original .py files."
+    echo "Keeping original .py files. Skipping backup cleanup."
     ;;
   * )
-    echo "Invalid choice. Keeping original .py files."
+    echo "Invalid choice. Keeping original .py files. Skipping backup cleanup."
     ;;
 esac
