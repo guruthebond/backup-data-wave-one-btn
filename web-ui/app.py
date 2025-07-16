@@ -61,6 +61,9 @@ def mount_check_drive():
             subprocess.run(['umount', '/mnt/usb/check'], check=True)
 
         subprocess.run(['mount', drive, '/mnt/usb/check'], check=True)
+        partitions = get_available_partitions()
+        selected_label = next((p['label'] for p in partitions if p['name'] == drive), "No Label")
+        session['check_disk_label'] = selected_label
         return redirect(url_for('browse_check_folder', current_path='/mnt/usb/check'))
     except subprocess.CalledProcessError as e:
         return f"Failed to mount: {str(e)}", 400
@@ -82,13 +85,15 @@ def browse_check_folder():
         parent_folder = os.path.dirname(current_path)
 
     display_path = current_path.replace('/mnt/usb/check', '')
+    disk_label = session.get('check_disk_label', 'No Label')
     return render_template('checkfiles.html',
-                         current_path=current_path,
-                         display_path=display_path if display_path else '/',
-                         folders=folders,
-                         files=files,
-                         parent_folder=parent_folder,
-                         partitions=get_available_partitions())
+                           current_path=current_path,
+                           display_path=display_path if display_path else '/',
+                           folders=folders,
+                           files=files,
+                           parent_folder=parent_folder,
+                           partitions=get_available_partitions(),
+                           disk_label=disk_label)
 
 from PIL import Image  # Add this at the top of your file
 
@@ -445,6 +450,10 @@ def list_folders_with_sizes(directory):
     return folders
 
 @app.route('/')
+def landing():
+    return render_template('landing.html')
+
+@app.route('/main')
 def index():
     partitions = get_available_partitions()
     return render_template('index.html', status=status, partitions=partitions)
@@ -494,12 +503,13 @@ def folder_selection():
     # Get labels from session with fallback
     source_label = session.get('source_label', 'No Label')
     destination_label = session.get('destination_label', 'No Label')
-    return render_template('folder.html',
-                           source_folders=source_folders,
-                           destination_folders=destination_folders,
-                           source_label=source_label,
-                           destination_label=destination_label)
-
+    return render_template(
+        'folder.html',
+        source_folders=source_folders,
+        destination_folders=destination_folders,
+        source_label=source_label,
+        destination_label=destination_label,
+    )
 
 
 import os
@@ -708,4 +718,4 @@ def extract_log_type(file_path):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=80)
