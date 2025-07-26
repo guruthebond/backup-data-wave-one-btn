@@ -47,30 +47,21 @@
     }
 
     .form-container-browse {
-        max-width: 1000px;
-        margin: 2rem auto;
-        padding: 2rem;
-        border-radius: 12px;
+        padding: 1.5rem;
         background: var(--browse-section-bg);
-        box-shadow: var(--card-shadow);
+        border-radius: 0 0 8px 8px;
     }
 
     .form-container-copy {
-        max-width: 1000px;
-        margin: 2rem auto;
-        padding: 2rem;
-        border-radius: 12px;
+        padding: 1.5rem;
         background: var(--copy-section-bg);
-        box-shadow: var(--card-shadow);
+        border-radius: 0 0 8px 8px;
     }
 
     .form-container-create {
-        max-width: 1000px;
-        margin: 2rem auto;
-        padding: 2rem;
-        border-radius: 12px;
+        padding: 1.5rem;
         background: var(--create-section-bg);
-        box-shadow: var(--card-shadow);
+        border-radius: 0 0 8px 8px;
     }
 
     .page-title {
@@ -358,10 +349,44 @@
         transform: scale(1.1);
     }
 
+    /* Tab styling */
+    .nav-tabs {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background-color: var(--card-bg);
+        margin-right: 0.5rem;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: var(--text-primary);
+        background-color: var(--card-bg);
+        border-bottom: 3px solid var(--primary-color);
+    }
+
+    .nav-tabs .nav-link:hover:not(.active) {
+        background-color: var(--hover-bg);
+    }
+
+    .tab-content-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        background: var(--card-bg);
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
         .form-container, .form-container-browse, .form-container-copy, .form-container-create {
-            margin: 1rem;
+            margin: 0;
             padding: 1rem;
         }
 
@@ -388,6 +413,11 @@
         }
         
         .file-meta {
+            font-size: 0.9rem;
+        }
+
+        .nav-tabs .nav-link {
+            padding: 0.75rem 1rem;
             font-size: 0.9rem;
         }
     }
@@ -433,126 +463,162 @@
         .file-meta {
             font-size: 0.85rem;
         }
+
+        .nav-tabs {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-tabs .nav-link {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+        }
     }
 </style>
 
-<!-- Browse Container -->
-<div class="form-container-browse">
-    <h1 class="page-title">Browse Folders</h1>
-    
-    <div class="folders-grid">
-        <div class="folder-card">
-            <a href="{{ url_for('browse_folder', base_path='/mnt/usb/source', home_url=session['home_url']) }}" class="folder-link">
-                <div class="folder-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                    </svg>
-                </div>
-                <div class="folder-info">
-                    <div class="folder-name">Source Files</div>
-                    <div class="folder-meta">Browse source files</div>
-                </div>
-            </a>
-        </div>
+<div class="tab-content-container">
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs" id="folderTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="browse-tab" data-bs-toggle="tab" data-bs-target="#browse" type="button" role="tab" aria-controls="browse" aria-selected="false">Browse Folders</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="copy-tab" data-bs-toggle="tab" data-bs-target="#copy" type="button" role="tab" aria-controls="copy" aria-selected="true">Copy Via WebUI</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab" aria-controls="create" aria-selected="false">Add Folder</button>
+        </li>
+    </ul>
 
-        <div class="folder-card">
-            <a href="{{ url_for('browse_folder', base_path='/mnt/usb/destination', home_url=session['home_url']) }}" class="folder-link">
-                <div class="folder-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                    </svg>
-                </div>
-                <div class="folder-info">
-                    <div class="folder-name">Destination Files</div>
-                    <div class="folder-meta">Browse destination files</div>
-                </div>
-            </a>
-        </div>
-    </div>
-</div>
-
-<!-- Copy Container -->
-<div class="form-container-copy">
-    <h1 class="page-title">Copy File via Web UI</h1>
-    
-    <!-- Source Folders Section -->
-    <h2 class="section-title">Source [{{ source_label }}]</h2>
-    <div class="folders-grid">
-        {% for folder in source_folders %}
-            <div class="folder-card">
-                <div class="folder-link" style="cursor: default;">
-                    <div class="folder-icon">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                        </svg>
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Browse Tab -->
+        <div class="tab-pane fade" id="browse" role="tabpanel" aria-labelledby="browse-tab">
+            <div class="form-container-browse">
+                <h1 class="page-title">Browse Folders</h1>
+                
+                <div class="folders-grid">
+                    <div class="folder-card">
+                        <a href="{{ url_for('browse_folder', base_path='/mnt/usb/source', home_url=session['home_url']) }}" class="folder-link">
+                            <div class="folder-icon">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="folder-info">
+                                <div class="folder-name">Source Files</div>
+                                <div class="folder-meta">Browse source files</div>
+                            </div>
+                        </a>
                     </div>
-                    <div class="folder-info">
-                            <div class="folder-header">
-                                    <input type="radio" name="source_folder" id="source_{{ loop.index }}" value="{{ folder.name }}" onchange="checkSelection()">
-                                    <label for="source_{{ loop.index }}" class="folder-name">{{ folder.name }}</label>
-                                    <span class="folder-size">{{ folder.size }}</span>
-                        </div>
+
+                    <div class="folder-card">
+                        <a href="{{ url_for('browse_folder', base_path='/mnt/usb/destination', home_url=session['home_url']) }}" class="folder-link">
+                            <div class="folder-icon">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="folder-info">
+                                <div class="folder-name">Destination Files</div>
+                                <div class="folder-meta">Browse destination files</div>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </div>
-        {% endfor %}
-    </div>
+        </div>
 
-    <!-- Destination Folders Section -->
-    <h2 class="section-title">Destination [{{ destination_label }}]</h2>
-    <div class="folders-grid">
-        {% for folder in destination_folders %}
-            <div class="folder-card">
-                <div class="folder-link" style="cursor: default;">
-                    <div class="folder-icon">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                        </svg>
-                    </div>
-
-                    <div class="folder-info">
-                        <div class="folder-header">
-                            <input type="radio" name="destination_folder" id="dest_{{ loop.index }}" value="{{ folder.name }}" onchange="checkSelection()">
-                            <label for="dest_{{ loop.index }}" class="folder-name">{{ folder.name }}</label>
-                            <span class="folder-size">{{ folder.size }}</span>
-                            <div class="delete-link-container">
-                                <a href="#" onclick="confirmDeletion('{{ folder.name }}', '{{ folder.name }}')" class="delete-link">
-                                    <img src="{{ url_for('static', filename='icons/delete.svg') }}" alt="Delete" class="delete-icon">
-                                </a>
-                                <form method="POST" action="/delete_folder" id="deleteForm_{{ folder.name }}" style="display: none;">
-                                    <input type="hidden" name="folder_name" value="{{ folder.name }}">
-                                </form>
+        <!-- Copy Tab -->
+        <div class="tab-pane fade show active" id="copy" role="tabpanel" aria-labelledby="copy-tab">
+            <div class="form-container-copy">
+                <h1 class="page-title">Copy File via Web UI</h1>
+                
+                <!-- Source Folders Section -->
+                <h2 class="section-title">Source [{{ source_label }}]</h2>
+                <div class="folders-grid">
+                    {% for folder in source_folders %}
+                        <div class="folder-card">
+                            <div class="folder-link" style="cursor: default;">
+                                <div class="folder-icon">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="folder-info">
+                                        <div class="folder-header">
+                                                <input type="radio" name="source_folder" id="source_{{ loop.index }}" value="{{ folder.name }}" onchange="checkSelection()">
+                                                <label for="source_{{ loop.index }}" class="folder-name">{{ folder.name }}</label>
+                                                <span class="folder-size">{{ folder.size }}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Destination Folders Section -->
+                <h2 class="section-title">Destination [{{ destination_label }}]</h2>
+                <div class="folders-grid">
+                    {% for folder in destination_folders %}
+                        <div class="folder-card">
+                            <div class="folder-link" style="cursor: default;">
+                                <div class="folder-icon">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                    </svg>
+                                </div>
+
+                                <div class="folder-info">
+                                    <div class="folder-header">
+                                        <input type="radio" name="destination_folder" id="dest_{{ loop.index }}" value="{{ folder.name }}" onchange="checkSelection()">
+                                        <label for="dest_{{ loop.index }}" class="folder-name">{{ folder.name }}</label>
+                                        <span class="folder-size">{{ folder.size }}</span>
+                                        <div class="delete-link-container">
+                                            <a href="#" onclick="confirmDeletion('{{ folder.name }}', '{{ folder.name }}')" class="delete-link">
+                                                <img src="{{ url_for('static', filename='icons/delete.svg') }}" alt="Delete" class="delete-icon">
+                                            </a>
+                                            <form method="POST" action="/delete_folder" id="deleteForm_{{ folder.name }}" style="display: none;">
+                                                <input type="hidden" name="folder_name" value="{{ folder.name }}">
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Start Copy Button -->
+                <form method="POST" action="/start_copy">
+                    <input type="hidden" id="selected_source_folder" name="source_folder">
+                    <input type="hidden" id="selected_destination_folder" name="destination_folder">
+                    <button type="submit" id="copyButton" class="start-copy-btn" disabled>Start Copy</button>
+                </form>
+
+                <!-- Progress Bar -->
+                <div id="progress_bar">
+                    <div id="progress_bar_inner"></div>
                 </div>
             </div>
-        {% endfor %}
-    </div>
-
-    <!-- Start Copy Button -->
-    <form method="POST" action="/start_copy">
-        <input type="hidden" id="selected_source_folder" name="source_folder">
-        <input type="hidden" id="selected_destination_folder" name="destination_folder">
-        <button type="submit" id="copyButton" class="start-copy-btn" disabled>Start Copy</button>
-    </form>
-
-    <!-- Progress Bar -->
-    <div id="progress_bar">
-        <div id="progress_bar_inner"></div>
-    </div>
-</div>
-
-<!-- Create Folder Container -->
-<div class="form-container-create">
-    <h2 class="section-title">Add folder in destination disk</h2>
-    <form method="POST" action="/create_folder" id="createDestinationFolderForm">
-        <div class="mb-3">
-            <input type="text" class="form-control" id="new_destination_folder" name="new_folder_name" placeholder="Type name of folder here ...">
-            <input type="hidden" name="mount_point" value="/mnt/usb/destination">
         </div>
-        <button type="submit" class="create-folder-btn">Create in Destination</button>
-    </form>
+
+        <!-- Create Tab -->
+        <div class="tab-pane fade" id="create" role="tabpanel" aria-labelledby="create-tab">
+            <div class="form-container-create">
+                <h2 class="section-title">Add folder in destination disk</h2>
+                <form method="POST" action="/create_folder" id="createDestinationFolderForm">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="new_destination_folder" name="new_folder_name" placeholder="Type name of folder here ...">
+                        <input type="hidden" name="mount_point" value="/mnt/usb/destination">
+                    </div>
+                    <button type="submit" class="create-folder-btn">Create in Destination</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
