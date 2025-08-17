@@ -47,6 +47,20 @@ LOG_DIR = 'log'  # Update with the actual log directory path
 #    except Exception as e:
 #        return f"Error listing logs: {str(e)}"
 
+@app.route('/download')
+def download_file():
+    file_path = request.args.get('file')
+    
+    # Security check - allow only specific base paths
+    allowed_dirs = ['/mnt/usb/source/', '/mnt/usb/destination/', '/mnt/usb/check/']
+    if not any(file_path.startswith(path) for path in allowed_dirs):
+        return "Access denied", 403
+
+    if not os.path.exists(file_path):
+        return "File not found", 404
+
+    return send_file(file_path, as_attachment=True)
+
 @app.route('/chkfiles')
 def check_files():
     partitions = get_available_partitions()
