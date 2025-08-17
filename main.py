@@ -1149,6 +1149,34 @@ def display_message_wifi_oled(*lines, font_icons):
             draw.rectangle((0, y_position , 5 + select_text_width + 30, y_position + 15), outline="white", fill="white")
             draw.text((15, y_position + 1), select_text, font=font_medium, fill="black")
 
+def notify_incomplete_session(device):
+    session_file = "/backup-data/session.lock"
+    if os.path.exists(session_file):
+        try:
+            with open(session_file) as f:
+                mode, timestamp = f.read().strip().split(",", 1)
+        except:
+            mode, timestamp = "unknown", "unknown"
+
+        # Show simple notification
+        with canvas(device) as draw:
+            draw.rectangle((0,0,device.width,device.height), outline="black", fill="black")
+            draw.text((2,2), "Last Copy Interrupted!", font=font_small, fill="white")
+            draw.text((2,20), f"Mode: {mode} copy", font=font_small, fill="white")
+            draw.text((2,35), "Please restart copy", font=font_small, fill="white")
+            draw.text((2,50), "operation again...", font=font_small, fill="white")
+
+        # Wait for any button press to dismiss
+        while not (button_up.is_pressed or button_down.is_pressed or 
+                   button_left.is_pressed or button_right.is_pressed or 
+                   button_select.is_pressed or button_key1.is_pressed or 
+                   button_key2.is_pressed or button_key3.is_pressed):
+            time.sleep(0.1)
+
+        # Clear session file so it won't nag again
+        os.remove(session_file)
+
+
 # Function to generate and display a borderless QR code
 def display_qr_code(url, mode="wifi"):
     device.contrast(50)
@@ -1849,7 +1877,7 @@ def display_summary(source, dest):
         # Wait for Select button to proceed
         if button_select.is_pressed:
             time.sleep(0.2)  # Debounce
-            copy_mode(device, mode="just")
+            copy_mode(device, mode="just", buttons=(button_up, button_down, button_select))
             return
 
         time.sleep(0.1)  # Avoid High CPU usage
@@ -1889,7 +1917,7 @@ def display_summary_dated(source, dest):
         #Wait for Select button to proceed
         if button_select.is_pressed:
             time.sleep(0.2)  # Debounce
-            copy_mode(device, mode="dated")
+            copy_mode(device, "dated", (button_up, button_down, button_select))
             return
         
         time.sleep(0.1)  # Avoid High CPU usage
@@ -1900,7 +1928,7 @@ def main():
     # Initialize display brightness
     device.contrast(current_brightness)
     print("\nSystem Ready - Press KEY1-3 at any time!")
-
+    notify_incomplete_session(device)
     while True:
         try:
             # Main menu navigation with special key handling
