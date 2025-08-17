@@ -89,10 +89,15 @@
                 </div>
                 <div class="file-action">
                     <button class="btn btn-sm btn-outline-primary"
-                            onclick="previewFile('{{ current_path }}/{{ file.name }}')"
-                            style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-                        Preview
-                    </button>
+            onclick="previewFile('{{ current_path }}/{{ file.name }}')"
+            style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-right: 0.5rem;">
+        Preview
+    </button>
+    <a href="/download?file={{ current_path }}/{{ file.name | urlencode }}"
+       class="btn btn-sm btn-outline-success"
+       style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+        Download
+    </a>
                 </div>
             </div>
         {% endfor %}
@@ -185,6 +190,13 @@
     .folder-card:hover {
         transform: translateY(-2px);
     }
+
+    .file-action {
+    margin-left: 1rem;
+    flex-shrink: 0;
+    display: flex;
+    gap: 0.5rem; /* Adds spacing between buttons */
+}
 
     .folder-link {
         display: flex;
