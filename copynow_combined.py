@@ -22,7 +22,7 @@ JUST_DST = os.path.join(DST_ROOT, "just-backup")
 DATED_DST = os.path.join(DST_ROOT, "dated-backup")
 LOG_FILE = "/backup-data/copy-log.csv"
 MAX_LOG_ENTRIES = 10
-
+SESSION_FILE = "/backup-data/session.lock"
 # Globals
 rsync_proc = None
 stop_flag = False
@@ -146,7 +146,8 @@ def rsync_file(device, srcp, destp, count, total, mode):
             time.sleep(0.5)
             return 1
 
-        cmd = ["rsync", "-a", "--human-readable", "--info=progress2", "--exclude=.*", srcp, destp]
+        cmd = ["rsync", "-a", "--partial", "--inplace",
+               "--human-readable", "--info=progress2", "--exclude=.*", srcp, destp]
         rsync_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         try:
@@ -192,10 +193,39 @@ def create_timestamped_filename(src_path):
     timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(src_path)).strftime("%m-%d-%Y-%H-%M")
     return f"{base}-{timestamp}{ext}"  # Changed from [timestamp] to -timestamp
 
-def copy_mode(device, mode):
+def copy_mode(device, mode, buttons=None):
     global stop_flag
     stop_flag = False
+    button_up, button_down, button_select = buttons
+    report_choice = ["Yes", "No"]
+    selected = 0
+    while True:
+        with canvas(device) as draw:
+            draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
+            draw.text((2, 10), "Generate Report?", font=FONT, fill="white")
+            for i,opt in enumerate(report_choice):
+                if i == selected:
+                    draw.rectangle((5, 30 + i*15, device.width - 5, 30 + i*15 + 12),
+                                   outline="white", fill="white")
+                    draw.text((10, 30 + i*15), opt, font=SMALL_FONT, fill="black")
+                else:
+                    draw.text((10, 30 + i*15), opt, font=SMALL_FONT, fill="white")
 
+        if button_up.is_pressed or button_down.is_pressed:
+            selected = (selected + 1) % len(report_choice)
+            time.sleep(0.2)
+        elif button_select.is_pressed:
+            time.sleep(0.2)
+            break
+        time.sleep(0.1)
+    generate_report = (report_choice[selected] == "Yes")
+
+    # Mark that a copy session started
+    os.makedirs(os.path.dirname(SESSION_FILE), exist_ok=True)
+    with open(SESSION_FILE, "w") as f:
+        f.write(f"{mode},{datetime.datetime.now().isoformat()}\n")
+        f.flush()
+        os.fsync(f.fileno())
     dst = JUST_DST if mode == 'just' else DATED_DST
     if not os.path.ismount(DST_ROOT):
         stop_flag = "dst"
@@ -370,22 +400,26 @@ def copy_mode(device, mode):
         log_to_csv(start_s, end.strftime("%Y-%m-%d %H:%M"), bytes_to_human(data_copied), dur_s, "Success")
         with canvas(device) as draw:
             draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
+
+        if generate_report:
+            with canvas(device) as draw:
+                draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
+                draw.text((10, 20), "Report Creation", font=FONT, fill="white")
+                draw.text((10, 40), "Please wait...", font=SMALL_FONT, fill="white")
+            if mode == 'just':
+                import report
+                report.generate_reports()
+            else:
+                 import report_dated
+                 report_dated.generate_reports()
+            time.sleep(2)
         with canvas(device) as draw:
             draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
-            draw.text((6, device.height // 2 - 20), "Report Creation", font=FONT, fill="white")
-            draw.text((6, device.height // 2), f"Please wait...", font=FONT, fill="white")
-        if mode == 'just':
-            import report
-            report.generate_reports()
-        else:  # dated mode
-            import report_dated
-            report_dated.generate_reports()
-        time.sleep(2)
-        with canvas(device) as draw:
-            draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
-            draw.text((10, 20), "Copy Done!", font=FONT, fill="white")
+            draw.text((10, 20), "Copied Sucessfully!", font=SMALL_FONT, fill="white")
             draw.text((10, 40), f"{count}/{total} files", font=SMALL_FONT, fill="white")
         time.sleep(2)
+        if os.path.exists(SESSION_FILE):
+            os.remove(SESSION_FILE)
 
 def main():
     parser = argparse.ArgumentParser()
