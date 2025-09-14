@@ -100,7 +100,9 @@ def is_mount_accessible(mount_path):
     """Check if mount point is accessible"""
     try:
         with os.scandir(mount_path) as it:
-            next(it)
+            # Try to get first entry, but if empty, it's still fine
+            for _ in it:
+                break
         return True
-    except (OSError, StopIteration):
+    except OSError:
         return False
