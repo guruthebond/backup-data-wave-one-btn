@@ -198,10 +198,181 @@ button_select = Button(20, bounce_time=0.3)  # KEY2 - reporting/WebUI (was GPIO 
 button_left = None  # LEFT is virtual - triggered by UP+DOWN combo
 button_right = None  # Removed as requested
 
-menu_items = ["\uf0c5 Just Copy", "\uf133 Dated Copy", "\uf15c Copy History", "\uf1eb WebUI Backup", "\uf1c0 Disk Info", "\uf7b9 Disk Check","\uf013 Settings"]
+menu_items = [
+    "\uf0c5 Just Copy",
+    "\uf133 Dated Copy",
+    "\uf15c Copy History",
+    "\uf1eb WebUI Backup",
+    "\uf1c0 Disk Info",
+    "\uf7b9 Disk Check",
+    "\uf013 Settings"
+]
+
+def nvme_present():
+    if os.path.exists("/dev/nvme0n1p2") or os.path.ismount("/mnt/nvme0n1p2"):
+        return True
+    return False
+
+# Conditionally add Built-in SSD submenu
+if nvme_present():
+    menu_items.insert(-5, "\uf0a0 Built-in SSD")  # Insert before Settings
+
 shutdown_menu_items = ["\uf28d Shutdown", "\uf021 Reboot", "\uf28d Cancel"]
 settings_menu_items = ["\uf129 Version", "\uf56d Update", "\uf021 Reboot", "\uf28d Shutdown", "\uf017 Set Time", "\uf2f1 Factory Reset", "\uf28d Back"]
 selected_index = 0
+
+# Built-in SSD submenu items
+ssd_menu_items = [
+    "\uf1c0 SSD Info",       # shows total/free space of nvme0n1p2
+    "\uf019 Offload Data",   # copies data to USB drive (reuse existing copy logic)
+    "\uf1f9 Format SSD",     # formats nvme0n1p2 in exFAT (double confirmation)
+    "\uf28d Back"            # go back to main menu
+]
+
+
+def ssd_info_menu(device_path="/dev/nvme0n1p2"):
+    """Display info for the built-in SSD"""
+    mount_point = "/mnt/ssd_info"
+    
+    # Ensure mount point exists
+    if not os.path.exists(mount_point):
+        os.makedirs(mount_point)
+    
+    # Unmount if already mounted
+    if os.path.ismount(mount_point):
+        unmount_partition(mount_point)
+    
+    try:
+        # Mount the SSD partition
+        device_name = device_path.split('/')[-1]  # Extract 'nvme0n1p2' from '/dev/nvme0n1p2'
+        mount_partition(device_name, mount_point)
+        
+        # Get partition info
+        total_size, free_size = get_partition_info(mount_point)
+        label = get_partition_label(device_name)
+        
+        # Display the info
+        with canvas(device) as draw:
+            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+            draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
+            draw.text((2, 1), "SSD Info", font=font_small, fill="black")
+            
+            y = 20
+            draw.text((2, y), f"Label: {label}", font=font_medium, fill="white")
+            y += 16
+            draw.text((2, y), f"Total: {total_size}", font=font_medium, fill="white")
+            y += 16
+            draw.text((2, y), f"Free: {free_size}", font=font_medium, fill="white")
+        
+        # Wait for any button press to return
+        while not (button_up.is_pressed or button_down.is_pressed or button_select.is_pressed):
+            time.sleep(0.1)
+        
+    except Exception as e:
+        display_message("SSD Info Error", f"Cannot read {device_path}")
+        time.sleep(2)
+    finally:
+        # Always unmount before returning
+        if os.path.ismount(mount_point):
+            unmount_partition(mount_point)
+
+def ssd_menu():
+    global selected_index
+    selected_index = 0
+    while True:
+        choice = navigate_menu_time(ssd_menu_items, title="Built-in SSD")
+        if choice == "\uf1c0 SSD Info":
+            ssd_info_menu("/dev/nvme0n1p2")
+        elif choice == "\uf019 Offload Data":
+            # Simple approach: pre-set SSD as source and use Just Copy logic
+            ssd_partition = ("nvme0n1p2", "SSD_SIZE", "SSD_FREE", "PBSSD")  # Mock SSD data
+            
+            # Let user select destination only
+            dest = select_partition('destination', exclude_disk="nvme")
+            if dest is None:
+                continue
+            
+            # Clean previous mounts
+            if os.path.ismount("/mnt/src"): unmount_partition("/mnt/src")
+            if os.path.ismount("/mnt/dst"): unmount_partition("/mnt/dst")
+            
+            # Mount SSD as source and destination as usual
+            mount_partition(ssd_partition[0], "/mnt/src")
+            mount_partition(dest[0], "/mnt/dst")
+            
+            # Use existing Just Copy logic
+            from copynow_ssd import ssd_mode
+            ssd_mode(device, 'just', buttons=(button_up, button_down, button_select))
+            
+            # Cleanup
+            unmount_partition("/mnt/src")
+            unmount_partition("/mnt/dst")
+            
+        elif choice == "\uf1f9 Format SSD":
+            selected_index = 0
+            if not confirm_format_nvme():
+                continue
+        elif choice == "\uf28d Back":
+            return
+
+def confirm_format_nvme():
+    confirmations = 0
+    device_path = "/dev/nvme0n1p2"  # adjust if needed
+
+    # Messages for the two confirmation steps
+    messages = ["Format SSD?", "Really Sure?"]
+
+    while confirmations < 2:
+        options = ["Cancel", "Confirm"]
+        index = 0  # Cancel as default
+
+        while True:
+            with canvas(device) as draw:
+                draw.text((0, 0), f"{messages[confirmations]}", font=font_medium, fill="white")
+                for i, opt in enumerate(options):
+                    prefix = ">" if i == index else " "
+                    draw.text((0, 20 + i * 15), f"{prefix} {opt}", font=font_medium, fill="white")
+
+            # Handle button presses
+            if button_up.is_pressed or button_down.is_pressed:
+                index = (index + 1) % 2
+                time.sleep(0.2)
+            elif button_select.is_pressed:
+                if index == 0:  # Cancel
+                    time.sleep(0.2)
+                    return False
+                else:
+                    confirmations += 1
+                    time.sleep(0.2)
+                    break
+            time.sleep(0.1)
+
+    # Show "Formatting..." message
+    with canvas(device) as draw:
+        draw.text((10, 20), "Quick Formatting SSD...\nPlease wait", font=font_medium, fill="white")
+
+    # Unmount the device first
+    subprocess.run(["sudo", "umount", device_path], stderr=subprocess.DEVNULL)
+
+    # Quick format (no -f) and suppress console output
+    subprocess.run(
+        ["sudo", "mkfs.exfat", device_path, "-n", "PBSSD"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+    # Wait a moment for kernel to recognize the filesystem
+    time.sleep(1)
+
+    # Assume success
+    success = True
+
+    # Show result on OLED
+    with canvas(device) as draw:
+        draw.text((10, 20), "Formatted SSD!" if success else "exFAT format fail!", font=font_medium, fill="white")
+    time.sleep(3)
+
+    return success
 
 def handle_brightness_control():
     global current_brightness, brightness_index
@@ -841,8 +1012,10 @@ def set_time_manually():
         time.sleep(0.1)
 
     # Set the selected time zone
-    #os.system(f"sudo timedatectl set-timezone {time_zones[selected_time_zone]}")
-    #print(f"Time zone set to: {time_zones[selected_time_zone]}")
+    os.system(f"sudo timedatectl set-timezone {time_zones[selected_time_zone]}")
+    os.environ['TZ'] = time_zones[selected_time_zone]
+    time.tzset()  # Reload timezone data for Python
+    print(f"Time zone set to: {time_zones[selected_time_zone]}")
 
     # Step 2: Set Year First
     time_parts = ["Year", "Month", "Day", "Hour", "Minute"]
@@ -1278,6 +1451,10 @@ def get_partition_info(mount_point):
     free_size = (stat.f_bavail * stat.f_frsize) / (1024**3)   # Available free space for unprivileged users
     return f"{total_size:.2f}GB", f"{free_size:.2f}GB"
 
+import psutil
+import shutil
+import time
+
 def disk_info_menu():
     """
     Displays total and free sizes of mounted USB partitions with scrolling 
@@ -1349,6 +1526,7 @@ def disk_info_menu():
     # Unmount partitions before returning to the menu
     for _, _, _, mount_point in mounted_partitions:
         unmount_partition(mount_point)
+
 
 # Read and parse CSV log file
 def read_and_parse_csv_log(log_file_path):
@@ -1988,6 +2166,9 @@ def main():
             elif choice == "\uf7b9 Disk Check":
                 print("Running Disk Check...")
                 disk_check_menu()
+
+            elif choice == "\uf0a0 Built-in SSD":   # 🔥 New case
+                ssd_menu()
 
             elif choice == "\uf15c Copy History":
                 print("Showing Copy History...")
