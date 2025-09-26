@@ -21,7 +21,7 @@ compile_and_move() {
 }
 
 # Compile .py files
-compile_and_move "/backup-data" main.py copynow_combined.py error_handler.py startup.py reset.py report.py report_dated.py
+compile_and_move "/backup-data" main.py copynow_combined.py error_handler.py startup.py reset.py report.py report_dated.py copynow_ssd.py
 compile_and_move "/backup-data/web-ui" app.py report_webui.py
 
 # Update systemd service files to reference .pyc instead of .py
