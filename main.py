@@ -288,7 +288,7 @@ def ssd_menu():
             ssd_partition = ("nvme0n1p2", "SSD_SIZE", "SSD_FREE", "PBSSD")  # Mock SSD data
             
             # Let user select destination only
-            dest = select_partition('destination', exclude_disk="nvme")
+            dest = select_partition('destination', exclude_disk="nvme", allow_nvme_source=True)
             if dest is None:
                 continue
             
@@ -1940,13 +1940,17 @@ def wait_for_new_device(exclude_disk):
             return partitions
         time.sleep(1)
 
-def select_partition(mode, exclude_disk=None):
+def select_partition(mode, exclude_disk=None, allow_nvme_source=False):
     while True:
         # Check if both buttons are pressed to return to the main menu
         if button_up.is_pressed and button_down.is_pressed:
             return None
 
         partitions = get_usb_partitions(exclude_disk=exclude_disk)
+
+        if mode == 'source' and not allow_nvme_source:
+            partitions = [p for p in partitions if not p[0].startswith('nvme')]
+
         if not partitions:
             display_message(f"Plug {mode.capitalize()} Device!", "Disk or Card")
             time.sleep(2)
@@ -2095,7 +2099,7 @@ def main():
             # --- Handle regular menu choices ---
             if choice == "\uf0c5 Just Copy":
                 print("Starting Just Copy...")
-                source = select_partition('source')
+                source = select_partition('source', allow_nvme_source=False)
                 if source is None:
                     continue
                 dest = select_partition('destination', exclude_disk=source[0][:3])
@@ -2118,7 +2122,7 @@ def main():
 
             elif choice == "\uf133 Dated Copy":
                 print("Starting Dated Copy...")
-                source = select_partition('source')
+                source = select_partition('source', allow_nvme_source=False)
                 if source is None:
                     continue
                 dest = select_partition('destination', exclude_disk=source[0][:3])
