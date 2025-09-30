@@ -327,34 +327,76 @@ def ssd_menu():
             ssd_info_menu("/dev/nvme0n1p2")
             # After returning from SSD Info, reset navigation state
             selected_index = 0
-
+        
         elif choice == "\uf019 Offload Data":
-            # Simple approach: pre-set SSD as source and use Just Copy logic
-            ssd_partition = ("nvme0n1p2", "SSD_SIZE", "SSD_FREE", "PBSSD")
+            # Get actual SSD partition info instead of placeholders
+            ssd_device = "nvme0n1p2"
+    
+            # Mount the SSD temporarily to get size info
+            mount_point = "/mnt/ssd_temp"
+            if not os.path.exists(mount_point):
+                os.makedirs(mount_point)
+    
+            # Unmount if already mounted
+            if os.path.ismount(mount_point):
+                unmount_partition(mount_point)
+    
+            try:
+                # Mount SSD to get actual size information
+                mount_partition(ssd_device, mount_point)
+        
+                # Get actual partition info
+                total_size, free_size = get_partition_info(mount_point)
+                label = get_partition_label(ssd_device)
+        
+                # Create proper partition tuple with real data
+                ssd_partition = (ssd_device, total_size, free_size, label)
+        
+                # Let user select destination only
+                dest = select_partition('destination', exclude_disk="nvme")
+                if dest is None:
+                    # Cleanup before returning
+                    unmount_partition(mount_point)
+                    continue
 
-            # Let user select destination only
-            dest = select_partition('destination', exclude_disk="nvme")
-            if dest is None:
-                continue
+                # Show summary/confirmation screen before proceeding
+                result = display_summary_offload(ssd_partition, dest)
+                if result == "Back to Main Menu":
+                    # Cleanup before returning
+                    unmount_partition(mount_point)
+                    continue
 
-            # Clean previous mounts
-            if os.path.ismount("/mnt/src"): unmount_partition("/mnt/src")
-            if os.path.ismount("/mnt/dst"): unmount_partition("/mnt/dst")
+                # Clean previous mounts
+                if os.path.ismount("/mnt/src"): unmount_partition("/mnt/src")
+                if os.path.ismount("/mnt/dst"): unmount_partition("/mnt/dst")
 
-            # Mount SSD as source and destination as usual
-            mount_partition(ssd_partition[0], "/mnt/src")
-            mount_partition(dest[0], "/mnt/dst")
+                # Mount SSD as source and destination as usual
+                mount_partition(ssd_partition[0], "/mnt/src")
+                mount_partition(dest[0], "/mnt/dst")
 
-            # Use existing Just Copy logic
-            copy_mode(device, mode="just", buttons=(button_up, button_down, button_select))
+                # Use existing Just Copy logic
+                copy_mode(device, mode="just", buttons=(button_up, button_down, button_select))
 
-            # Cleanup
-            unmount_partition("/mnt/src")
-            unmount_partition("/mnt/dst")
+                # Cleanup
+                unmount_partition("/mnt/src")
+                unmount_partition("/mnt/dst")
+        
+            except Exception as e:
+                print(f"Error in Offload Data: {e}")
+                display_message("Offload Error", f"Cannot read SSD: {str(e)}")
+                time.sleep(2)
+            finally:
+                # Always unmount the temp mount point
+                if os.path.ismount(mount_point):
+                    unmount_partition(mount_point)
 
         elif choice == "\uf1f9 Format SSD":
             selected_index = 0
-            if not confirm_format_nvme():
+            if confirm_format_nvme():
+                selected_index = 0
+                continue
+            else:
+                selected_index = 0
                 continue
 
         elif choice == "\uf28d Back":
@@ -362,73 +404,147 @@ def ssd_menu():
             selected_index = 0
             return
 
+def display_summary_offload(source, dest):
+    while True:
+        with canvas(device) as draw:
+            draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+
+            # Title Bar with White background
+            draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
+            draw.text((2, 1), "Summary[Offload Data]", font=font_small, fill="black")
+
+            # Display source and destination labels
+            source_label = "PBSSD"  # Fixed label for SSD
+            dest_label = dest[3][:5] if dest[3] != "NO-LBL" else "NO-LBL"
+
+            # Display source and destination info
+            # For SSD, we can show it as source without size, or get actual size
+            draw.text((0, 27), f"\u2193 ", font=font_large, fill="white")
+            draw.text((2, 20), f"  [{source_label}]-SSD", font=font_medium, fill="white")
+
+            # Show destination size
+            dest_size_rounded = round(float(dest[1].replace('GB', '')))
+            draw.text((2, 35), f"  [{dest_label}]-{dest_size_rounded}GB", font=font_medium, fill="white")
+
+            # Draw the "Select" text with inverse colors
+            select_text = "[SELECT] to Offload".upper()
+            text_width = draw.textlength(select_text, font=font_small)
+            x = (device.width - text_width) // 2
+            draw.rectangle((x - 2, device.height - 15, x + text_width + 2, device.height), outline="black", fill="white")
+            draw.text((x, device.height - 15), select_text, font=font_small, fill="black")
+
+        if button_left.is_pressed:
+            time.sleep(0.2)
+            return "Back to Main Menu"
+
+        # Wait for Select button to proceed
+        if button_select.is_pressed:
+            time.sleep(0.2)  # Debounce
+            return "Proceed with Offload"
+
+        time.sleep(0.1)  # Avoid High CPU usage
+
 def confirm_format_nvme():
     confirmations = 0
     device_path = "/dev/nvme0n1p2"
     last_button_time = 0
-    button_cooldown = 0.3  # 300ms cooldown
+    button_cooldown = 0.3
 
-    # Messages for the two confirmation steps
     messages = ["Format SSD?", "Really Sure?"]
-
+    options = ["Cancel", "Confirm"]
+    
     while confirmations < 2:
-        options = ["Cancel", "Confirm"]
-        index = 0  # Cancel as default
+        index = 0
+        prev_index = -1
 
         while True:
-            with canvas(device) as draw:
-                draw.text((0, 0), f"{messages[confirmations]}", font=font_medium, fill="white")
-                for i, opt in enumerate(options):
-                    prefix = ">" if i == index else " "
-                    draw.text((0, 20 + i * 15), f"{prefix} {opt}", font=font_medium, fill="white")
-
             current_time = time.time()
             
-            # Handle button presses - ADAPTED FOR JOYSTICK with debouncing
-            if (button_up.is_pressed or button_down.is_pressed) and current_time - last_button_time > button_cooldown:
+            if index != prev_index:
+                with canvas(device) as draw:
+                    # Clear screen
+                    draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+                    
+                    # Centered heading
+                    heading_text = messages[confirmations]
+                    text_width = draw.textlength(heading_text, font=font_heading)
+                    text_x = (device.width - text_width) // 2
+                    draw.text((text_x, 10), heading_text, font=font_heading, fill="white")
+                    
+                    # Line below heading
+                    draw.line((0, 25, device.width, 25), fill="white")
+                    
+                    # Options with proper spacing and highlighting
+                    option_y_start = 30
+                    option_spacing = 15
+                    
+                    for i, option in enumerate(options):
+                        y = option_y_start + (i * option_spacing)
+                        if i == index:
+                            # Highlight selected option
+                            draw.rectangle((6, y - 1, device.width - 5, y + 13), outline="white", fill="white")
+                            draw.text((12, y), option, font=font_medium, fill="black")
+                        else:
+                            draw.text((12, y), option, font=font_medium, fill="white")
+                
+                prev_index = index
+
+            # Handle button presses
+            if button_up.is_pressed and current_time - last_button_time > button_cooldown:
+                last_button_time = current_time
+                index = (index - 1) % 2
+                time.sleep(0.2)
+            elif button_down.is_pressed and current_time - last_button_time > button_cooldown:
                 last_button_time = current_time
                 index = (index + 1) % 2
                 time.sleep(0.2)
             elif button_select.is_pressed and current_time - last_button_time > button_cooldown:
                 last_button_time = current_time
                 if index == 0:  # Cancel
-                    time.sleep(0.2)
                     return False
                 else:
                     confirmations += 1
-                    time.sleep(0.2)
                     break
-            elif button_left.is_pressed and current_time - last_button_time > button_cooldown:  # Allow left to cancel
-                last_button_time = current_time
-                time.sleep(0.2)
+            elif button_left.is_pressed and current_time - last_button_time > button_cooldown:
                 return False
+            
             time.sleep(0.1)
 
-    # Show "Formatting..." message
+    # Formatting process
     with canvas(device) as draw:
-        draw.text((10, 20), "Quick Formatting SSD...\nPlease wait", font=font_medium, fill="white")
+        draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+        draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
+        draw.text((2, 1), "Formatting SSD", font=font_small, fill="black")
+        draw.text((10, 25), "Quick Formatting...", font=font_medium, fill="white")
+        draw.text((10, 40), "Please wait", font=font_medium, fill="white")
 
-    # Unmount the device first
+    # Unmount and format
     subprocess.run(["sudo", "umount", device_path], stderr=subprocess.DEVNULL)
-
-    # Quick format (no -f) and suppress console output
-    subprocess.run(
+    result = subprocess.run(
         ["sudo", "mkfs.exfat", device_path, "-n", "PBSSD"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
-
-    # Wait a moment for kernel to recognize the filesystem
     time.sleep(1)
 
-    # Assume success
-    success = True
+    success = (result.returncode == 0)
 
-    # Show result on OLED
+    # Show result briefly (2 seconds) and then return automatically
     with canvas(device) as draw:
-        draw.text((10, 20), "Formatted SSD!" if success else "exFAT format fail!", font=font_medium, fill="white")
-    time.sleep(3)
+        draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+        draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
+        
+        if success:
+            draw.text((2, 1), "Format Complete", font=font_small, fill="black")
+            draw.text((10, 30), "SSD Formatted!", font=font_medium, fill="white")
+            draw.text((10, 45), "Label: PBSSD", font=font_medium, fill="white")
+        else:
+            draw.text((2, 1), "Format Failed", font=font_small, fill="black")
+            draw.text((10, 30), "exFAT format failed!", font=font_medium, fill="white")
 
+    # Show result for 2 seconds and then return automatically
+    time.sleep(2)
+    
     return success
 
 def handle_brightness_control():
