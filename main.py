@@ -223,15 +223,15 @@ menu_items = [
     "\uf15c Copy History",
     "\uf1c0 Disk Info",
     "\uf7b9 Disk Check",
-    "\uf013 Settings"
+    "\uf013 Settings →"
 ]
 
 # Conditionally add Built-in SSD submenu
 if nvme_present():
-    menu_items.insert(4, "\uf0a0 Built-in SSD")  # Insert after Copy History
+    menu_items.insert(4, "\uf0a0 Built-in SSD →")  # Insert after Copy History
 
 shutdown_menu_items = ["\uf28d Shutdown", "\uf021 Reboot", "\uf28d Cancel"]
-settings_menu_items = ["\uf129 Version", "\uf56d Update", "\uf021 Reboot", "\uf28d Shutdown", "\uf017 Set Time", "\uf2f1 Factory Reset", "\uf28d Back"]
+settings_menu_items = ["\uf129 Version", "\uf56d Update", "\uf021 Reboot", "\uf28d Shutdown", "\uf017 Set Time", "\uf2f1 Factory Reset"]
 selected_index = 0
 
 # Built-in SSD submenu items
@@ -239,7 +239,7 @@ ssd_menu_items = [
     "\uf1c0 SSD Info",       # shows total/free space of nvme0n1p2
     "\uf019 Offload Data",   # copies data to USB drive (reuse existing copy logic)
     "\uf1f9 Format SSD",     # formats nvme0n1p2 in exFAT (double confirmation)
-    "\uf28d Back"            # go back to main menu
+    #"\uf28d Back"            # go back to main menu
 ]
 
 
@@ -320,7 +320,7 @@ def ssd_menu():
     selected_index = 0
 
     while True:
-        choice = navigate_menu_time(ssd_menu_items, title="Built-in SSD")
+        choice = navigate_menu_time(ssd_menu_items, title="← Built-in SSD", reset_position=True)
 
         # Process the choice
         if choice == "\uf1c0 SSD Info":
@@ -1205,13 +1205,18 @@ def set_time_manually():
                 break  # Return to the main menu without saving
         time.sleep(0.1) #Reduce High CPU Usage
 
-def navigate_menu_time(menu_items, title="Settings"):
+def navigate_menu_time(menu_items, title="← Settings", reset_position=False):
     global selected_index, last_settings_menu_index
     
-    # Restore last position when entering settings menu
-    if menu_items == settings_menu_items:
+    # Reset position if requested or when entering settings menu
+    if reset_position or (menu_items == settings_menu_items and reset_position):
+        selected_index = 0
+        last_settings_menu_index = 0
+
+    # Restore last position when entering settings menu (original logic)
+    if menu_items == settings_menu_items and not reset_position:
         selected_index = last_settings_menu_index
-    
+
     max_visible_items = 2  # Number of items visible at once
     prev_index = -1  # Track previous index to avoid unnecessary redraws
     last_button_time = 0
@@ -2315,17 +2320,17 @@ def main():
                 print("Running Disk Check...")
                 disk_check_menu()
 
-            elif choice == "\uf0a0 Built-in SSD":   # New SSD menu
+            elif choice == "\uf0a0 Built-in SSD →":   # New SSD menu
                 ssd_menu()
 
             elif choice == "\uf15c Copy History":
                 print("Showing Copy History...")
                 copy_history_menu()
 
-            elif choice == "\uf013 Settings":
+            elif choice == "\uf013 Settings →":
                 print("Entering Settings...")
                 while True:
-                    settings_choice = navigate_menu_time(settings_menu_items)
+                    settings_choice = navigate_menu_time(settings_menu_items, reset_position=True)
                     if settings_choice == "\uf017 Set Time":
                         set_time_manually()
                     elif settings_choice == "\uf28d Shutdown":
