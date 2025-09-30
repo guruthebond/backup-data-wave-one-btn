@@ -656,104 +656,490 @@ def generate_comparison_report(source_dir, destination_dir, comparison_file):
         ))
 # Keep your existing file list and maintenance functions
 # Generate file list report
+
+# Generate file list report with improved formatting and disk labels
+
+# Generate file list report with improved formatting and disk labels
 def generate_file_list(directory, output_file, title):
     print(f"Directory being processed: {directory}")
     directory = os.path.normpath(directory)
     file_count, size_gb = get_folder_stats(directory)
     location = "Source" if "src" in output_file.lower() else "Destination"
     
-    with open(output_file, "w") as f:
-        f.write(f"""
+    # Get disk label for the directory
+    disk_labels = get_disk_labels(directory, directory)  # Use same directory for both
+    disk_label = disk_labels['source'] if "src" in output_file.lower() else disk_labels['destination']
+    
+    with open(output_file, "w", encoding='utf-8') as f:
+        f.write(f"""<!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title}</title>
 <style>
-    table {{ width: 100%; border-collapse: collapse; }}
-    th, td {{ padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }}
-    th {{ background-color: #f2f2f2; }}
-    @media (max-width: 600px) {{ th, td {{ padding: 4px; font-size: 12px; }} }}
-    .stats-table {{ width: 50%; margin-bottom: 20px; }}
-    .file-table {{ margin-top: 20px; }}
-    .nav-button {{ margin: 5px; cursor: pointer; padding: 10px; border: none; background-color: #007bff; color: white; border-radius: 5px; }}
-    .nav-button {{ position: fixed; right: 20px; z-index: 1000; }}
-    #topBtn {{ bottom: 60px; }} #bottomBtn {{ bottom: 20px; }}
-</style>
-<script>
-function scrollToTop() {{
-    window.scrollTo({{ top: 0, behavior: 'smooth' }});
-}}
-
-function scrollToBottom() {{
-    window.scrollTo({{ top: document.body.scrollHeight, behavior: 'smooth' }});
-}}
-
-function filterTable(status) {{
-    var tables = document.getElementsByClassName('file-table');
-    for (var t = 0; t < tables.length; t++) {{
-        var table = tables[t];
-        var tr = table.getElementsByTagName('tr');
-        for (var i = 1; i < tr.length; i++) {{
-            var td = tr[i].getElementsByTagName('td')[2]; // Status column (3rd column)
-            if (td) {{
-                if (status === 'All') {{
-                    tr[i].style.display = '';
-                }} else {{
-                    tr[i].style.display = td.textContent.includes(status) ? '' : 'none';
-                }}
-            }}
+    body {{
+        font-family: Arial, sans-serif;
+        padding: 10px;
+        max-width: 100%;
+        background-color: #f5f5f5;
+        margin: 0;
+    }}
+    .header-card {{
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+    }}
+    .stats-row {{
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }}
+    .stat-card {{
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 15px;
+        flex: 1;
+        min-width: 150px;
+        text-align: center;
+    }}
+    .stat-value {{
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #2b5876;
+        margin-bottom: 5px;
+    }}
+    .stat-label {{
+        font-size: 0.9em;
+        color: #666;
+    }}
+    .disk-label {{
+        font-weight: bold;
+        color: #2b5876;
+        background: #e3f2fd;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-left: 8px;
+        font-size: 0.9em;
+    }}
+    .controls-row {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 0 10px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }}
+    .date-toggle {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 10px 15px;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        font-size: 0.9em;
+        color: #555;
+    }}
+    .date-toggle input[type="checkbox"] {{
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }}
+    .sort-controls {{
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: white;
+        padding: 10px 15px;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        font-size: 0.9em;
+    }}
+    .sort-btn {{
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85em;
+        transition: all 0.2s;
+    }}
+    .sort-btn:hover {{
+        background: #f0f0f0;
+    }}
+    .sort-btn.active {{
+        background: #2b5876;
+        color: white;
+        border-color: #2b5876;
+    }}
+    .sort-direction {{
+        margin-left: 5px;
+        font-size: 0.8em;
+    }}
+    .file-table-container {{
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }}
+    table {{
+        width: 100%;
+        border-collapse: collapse;
+    }}
+    th {{
+        background-color: #2b5876;
+        color: white;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+    }}
+    th:hover {{
+        background-color: #1e3d59;
+    }}
+    td {{
+        padding: 12px 15px;
+        border-bottom: 1px solid #e0e0e0;
+    }}
+    tr:nth-child(even) {{
+        background-color: #f8f9fa;
+    }}
+    tr:hover {{
+        background-color: #e3f2fd;
+        transition: background-color 0.2s;
+    }}
+    .file-name {{
+        font-weight: 500;
+        color: #333;
+    }}
+    .file-location {{
+        color: #666;
+        font-family: monospace;
+        font-size: 0.9em;
+    }}
+    .file-size {{
+        text-align: right;
+        font-weight: 500;
+        color: #2e7d32;
+    }}
+    .file-date {{
+        color: #666;
+        font-size: 0.85em;
+        white-space: nowrap;
+    }}
+    .nav-buttons {{
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 1000;
+    }}
+    .nav-button {{
+        padding: 12px 16px;
+        background: #2b5876;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }}
+    .nav-button:hover {{
+        background: #1e3d59;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }}
+    .page-title {{
+        color: #333;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }}
+    .sort-indicator {{
+        margin-left: 5px;
+        font-size: 0.8em;
+    }}
+    @media (max-width: 768px) {{
+        th, td {{
+            padding: 8px 10px;
+            font-size: 14px;
+        }}
+        .stats-row {{
+            flex-direction: column;
+        }}
+        .stat-card {{
+            min-width: auto;
+        }}
+        .nav-button {{
+            width: 45px;
+            height: 45px;
+            font-size: 14px;
+        }}
+        .date-toggle, .sort-controls {{
+            font-size: 0.85em;
+            padding: 8px 12px;
+        }}
+        .controls-row {{
+            flex-direction: column;
+            align-items: stretch;
+        }}
+        .sort-controls {{
+            justify-content: center;
         }}
     }}
-}}
-</script>
+    @media (max-width: 480px) {{
+        body {{
+            padding: 5px;
+        }}
+        th, td {{
+            padding: 6px 8px;
+            font-size: 12px;
+        }}
+        .header-card {{
+            padding: 15px;
+        }}
+    }}
+</style>
 </head>
 <body>
-<h2>{title}</h2>
 
-<table class="stats-table">
-<tr>
-    <th>{location}</th>
-    <th>Files Count</th>
-    <th>Size (GB)</th>
-</tr>
-<tr>
-    <td>{location}</td>
-    <td>{file_count}</td>
-    <td>{size_gb}</td>
-</tr>
-</table>
+<!-- Header Card -->
+<div class="header-card">
+    <div class="page-title">
+        <h2 style="margin: 0; color: #333;">{title}</h2>
+        <span class="disk-label">{disk_label}</span>
+    </div>
+    
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-value">{file_count}</div>
+            <div class="stat-label">Total Files</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{size_gb}</div>
+            <div class="stat-label">Total Size (GB)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{location}</div>
+            <div class="stat-label">Location</div>
+        </div>
+    </div>
+</div>
 
-<table border="1" class="file-table">
-<tr>
-    <th>Name</th>
-    <th>Location</th>
-    <th>Size of File (MB)</th>
-</tr>
+<!-- Controls Row -->
+<div class="controls-row">
+    <div class="date-toggle">
+        <input type="checkbox" id="showDate" onchange="toggleDateColumn()">
+        <label for="showDate">Show Modification Date</label>
+    </div>
+    <div class="sort-controls">
+        <span>Sort by:</span>
+        <button class="sort-btn active" onclick="sortTable('name', 'asc')" id="sort-name">
+            Name <span class="sort-direction" id="name-dir">↑</span>
+        </button>
+        <button class="sort-btn" onclick="sortTable('date', 'desc')" id="sort-date">
+            Date <span class="sort-direction" id="date-dir">↓</span>
+        </button>
+        <button class="sort-btn" onclick="sortTable('size', 'desc')" id="sort-size">
+            Size <span class="sort-direction" id="size-dir"></span>
+        </button>
+    </div>
+</div>
+
+<!-- File Table -->
+<div class="file-table-container">
+    <table id="fileTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable('name', toggleDirection('name'))">File Name <span class="sort-indicator" id="th-name"></span></th>
+                <th onclick="sortTable('location', toggleDirection('location'))">Location <span class="sort-indicator" id="th-location"></span></th>
+                <th onclick="sortTable('size', toggleDirection('size'))" style="text-align: right;">Size (MB) <span class="sort-indicator" id="th-size"></span></th>
+                <th class="date-column" style="display: none;" onclick="sortTable('date', toggleDirection('date'))">Modified <span class="sort-indicator" id="th-date"></span></th>
+            </tr>
+        </thead>
+        <tbody id="fileTableBody">
 """)
+        
+        # Collect all files first for consistent formatting
+        all_files = []
         for root, dirs, files in os.walk(directory):
             dirs[:] = [d for d in dirs if not d.startswith('.')]
             files = [f for f in files if not f.startswith('.')]
-            files.sort() 
             for file in files:
                 file_path = os.path.join(root, file)
                 rel_path = os.path.relpath(file_path, directory)
                 file_name = os.path.basename(file_path)
-                # Use 'root' if file is in the base directory
                 file_location = os.path.dirname(rel_path) if os.path.dirname(rel_path) not in ["", "."] else os.path.basename(directory)
-                #file_location = os.path.basename(directory) if os.path.dirname(rel_path) in ["", "."] else os.path.dirname(rel_path)
-                #file_location = os.path.dirname(rel_path) if os.path.dirname(rel_path) not in ["", "."] else "root"
                 file_size = get_file_size_mb(file_path)
-                f.write(f"""
-<tr>
-    <td>{file_name}</td>
-    <td>{file_location}</td>
-    <td>{file_size}</td>
-</tr>
+                file_date = get_file_mod_date(file_path)  # This returns "YYYY-MM-DD HH:MM:SS"
+                # Convert to timestamp for sorting
+                file_timestamp = datetime.strptime(file_date, "%Y-%m-%d %H:%M:%S").timestamp() if file_date else 0
+                all_files.append((file_name, file_location, file_size, file_date, file_timestamp))
+        
+        # Sort by name initially
+        all_files.sort(key=lambda x: x[0].lower())
+        
+        # Write files to table
+        for file_name, file_location, file_size, file_date, file_timestamp in all_files:
+            size_display = f"{file_size:.2f}" if file_size >= 0.01 else "0.00"
+            f.write(f"""
+            <tr data-name="{file_name.lower()}" data-location="{file_location.lower()}" data-size="{file_size}" data-date="{file_timestamp}">
+                <td class="file-name">{file_name}</td>
+                <td class="file-location">{file_location}</td>
+                <td class="file-size">{size_display}</td>
+                <td class="file-date date-column" style="display: none;">{file_date}</td>
+            </tr>
 """)
+        
         f.write("""
-</table>
-<button class="nav-button" id="topBtn" onclick="scrollToTop()">Go to Top</button>
-<button class="nav-button" id="bottomBtn" onclick="scrollToBottom()">Go to Bottom</button>
-</body></html>
+        </tbody>
+    </table>
+</div>
+
+<!-- Navigation Buttons -->
+<div class="nav-buttons">
+    <button class="nav-button" onclick="scrollToTop()" title="Go to Top">↑</button>
+    <button class="nav-button" onclick="scrollToBottom()" title="Go to Bottom">↓</button>
+</div>
+
+<script>
+// Current sort state
+let currentSort = { field: 'name', direction: 'asc' };
+let fileData = [];
+
+function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function scrollToBottom() {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+}
+
+function toggleDateColumn() {
+    const showDate = document.getElementById('showDate').checked;
+    const dateColumns = document.querySelectorAll('.date-column');
+    
+    dateColumns.forEach(column => {
+        column.style.display = showDate ? 'table-cell' : 'none';
+    });
+    
+    // Store preference in localStorage
+    localStorage.setItem('showFileDates', showDate);
+}
+
+function toggleDirection(field) {
+    if (currentSort.field === field) {
+        return currentSort.direction === 'asc' ? 'desc' : 'asc';
+    }
+    return field === 'date' || field === 'size' ? 'desc' : 'asc';
+}
+
+function sortTable(field, direction) {
+    currentSort = { field, direction };
+    updateSortButtons();
+    updateSortIndicators();
+    
+    const tbody = document.getElementById('fileTableBody');
+    const rows = Array.from(tbody.getElementsByTagName('tr'));
+    
+    rows.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch (field) {
+            case 'name':
+                aValue = a.getAttribute('data-name');
+                bValue = b.getAttribute('data-name');
+                return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                
+            case 'location':
+                aValue = a.getAttribute('data-location');
+                bValue = b.getAttribute('data-location');
+                return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                
+            case 'size':
+                aValue = parseFloat(a.getAttribute('data-size'));
+                bValue = parseFloat(b.getAttribute('data-size'));
+                return direction === 'asc' ? aValue - bValue : bValue - aValue;
+                
+            case 'date':
+                aValue = parseFloat(a.getAttribute('data-date'));
+                bValue = parseFloat(b.getAttribute('data-date'));
+                return direction === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+    });
+    
+    // Clear and re-append sorted rows
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+function updateSortButtons() {
+    // Update button active states
+    document.getElementById('sort-name').classList.toggle('active', currentSort.field === 'name');
+    document.getElementById('sort-date').classList.toggle('active', currentSort.field === 'date');
+    document.getElementById('sort-size').classList.toggle('active', currentSort.field === 'size');
+    
+    // Update button directions
+    document.getElementById('name-dir').textContent = currentSort.field === 'name' ? (currentSort.direction === 'asc' ? '↑' : '↓') : '';
+    document.getElementById('date-dir').textContent = currentSort.field === 'date' ? (currentSort.direction === 'asc' ? '↑' : '↓') : '';
+    document.getElementById('size-dir').textContent = currentSort.field === 'size' ? (currentSort.direction === 'asc' ? '↑' : '↓') : '';
+}
+
+function updateSortIndicators() {
+    // Clear all indicators
+    document.getElementById('th-name').textContent = '';
+    document.getElementById('th-location').textContent = '';
+    document.getElementById('th-size').textContent = '';
+    document.getElementById('th-date').textContent = '';
+    
+    // Set current sort indicator
+    const indicator = currentSort.direction === 'asc' ? '↑' : '↓';
+    document.getElementById(`th-${currentSort.field}`).textContent = indicator;
+}
+
+// Load saved preference
+window.addEventListener('load', function() {
+    const savedPreference = localStorage.getItem('showFileDates');
+    if (savedPreference === 'true') {
+        document.getElementById('showDate').checked = true;
+        toggleDateColumn();
+    }
+    
+    // Initialize sort
+    updateSortButtons();
+    updateSortIndicators();
+});
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Home' || (e.ctrlKey && e.key === 'ArrowUp')) {
+        scrollToTop();
+    } else if (e.key === 'End' || (e.ctrlKey && e.key === 'ArrowDown')) {
+        scrollToBottom();
+    }
+});
+</script>
+
+</body>
+</html>
 """)
 
 # Function to maintain only the last 10 reports of each type

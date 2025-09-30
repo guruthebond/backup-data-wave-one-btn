@@ -65,7 +65,7 @@ echo "Attempting first connection to GitHub (will add to known_hosts)..."
 ssh -T -o StrictHostKeyChecking=no git@github.com
 # Clone the repository
 echo "Cloning the backup-data-wave repository..."
-git clone git@github.com:guruthebond/backup-data-wave-3btn.git /backup-data
+git clone git@github.com:guruthebond/backup-data-wave-one-btn.git /backup-data
 
 # Set up Python virtual environment
 echo "Setting up Python environment..."

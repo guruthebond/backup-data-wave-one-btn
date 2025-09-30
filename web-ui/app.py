@@ -93,6 +93,48 @@ def browse_check_folder():
     # Get folder contents
     folders, files = list_folders_and_files(current_path)
 
+    # Filter out system and hidden directories AND files
+    def is_system_or_hidden(name):
+        """Check if a directory or file should be hidden from browsing"""
+        system_items = {
+            # Windows system directories
+            'System Volume Information', '$RECYCLE.BIN', 'Recovery', 
+            '$SysReset', '$WinREAgent', 'System32', 'Windows',
+            # Mac system directories
+            '.Trashes', '.Spotlight-V100', '.fseventsd', '.DocumentRevisions-V100',
+            # Linux hidden directories
+            '.Trash', '.trash', 'lost+found',
+            # Common hidden items
+            '.tmp', '.temp', 'Thumbs.db',
+            # System files
+            '.DS_Store', 'desktop.ini', '._.DS_Store', '.localized'
+        }
+        
+        # Skip if it's a known system item
+        if name in system_items:
+            return True
+            
+        # Skip if it starts with dot (Unix/Mac hidden)
+        if name.startswith('.'):
+            return True
+            
+        # Skip if it contains certain patterns (case insensitive)
+        if any(pattern in name.lower() for pattern in ['system', 'recovery', 'cache', 'temp', 'trash']):
+            return True
+            
+        # Skip files with system extensions
+        system_extensions = {'.tmp', '.temp', '.sys', '.dll', '.log'}
+        if any(name.lower().endswith(ext) for ext in system_extensions):
+            return True
+            
+        return False
+
+    # Apply filtering to folders
+    filtered_folders = [f for f in folders if not is_system_or_hidden(f['name'])]
+    
+    # Apply filtering to files
+    filtered_files = [f for f in files if not is_system_or_hidden(f['name'])]
+
     # Determine parent folder (if not at root)
     parent_folder = None
     if current_path != '/mnt/usb/check':
@@ -100,16 +142,15 @@ def browse_check_folder():
 
     display_path = current_path.replace('/mnt/usb/check', '')
     disk_label = session.get('check_disk_label', 'No Label')
+    
     return render_template('checkfiles.html',
                            current_path=current_path,
                            display_path=display_path if display_path else '/',
-                           folders=folders,
-                           files=files,
+                           folders=filtered_folders,  # Use filtered folders
+                           files=filtered_files,      # Use filtered files
                            parent_folder=parent_folder,
                            partitions=get_available_partitions(),
                            disk_label=disk_label)
-
-from PIL import Image  # Add this at the top of your file
 
 @app.route('/preview_raw')
 def preview_raw():
@@ -209,13 +250,58 @@ def browse_folder():
     # Get folder contents
     folders, files = list_folders_and_files(current_path)
 
+    # Filter out system and hidden directories AND files
+    def is_system_or_hidden(name):
+        """Check if a directory or file should be hidden from browsing"""
+        system_items = {
+            # Windows system directories
+            'System Volume Information', '$RECYCLE.BIN', 'Recovery', 
+            '$SysReset', '$WinREAgent', 'System32', 'Windows',
+            # Mac system directories
+            '.Trashes', '.Spotlight-V100', '.fseventsd', '.DocumentRevisions-V100',
+            # Linux hidden directories
+            '.Trash', '.trash', 'lost+found',
+            # Common hidden items
+            '.tmp', '.temp', 'Thumbs.db',
+            # System files
+            '.DS_Store', 'desktop.ini', '._.DS_Store', '.localized'
+        }
+        
+        # Skip if it's a known system item
+        if name in system_items:
+            return True
+            
+        # Skip if it starts with dot (Unix/Mac hidden)
+        if name.startswith('.'):
+            return True
+            
+        # Skip if it contains certain patterns (case insensitive)
+        if any(pattern in name.lower() for pattern in ['system', 'recovery', 'cache', 'temp', 'trash']):
+            return True
+            
+        # Skip files with system extensions
+        system_extensions = {'.tmp', '.temp', '.sys', '.dll', '.log'}
+        if any(name.lower().endswith(ext) for ext in system_extensions):
+            return True
+            
+        return False
+
+    # Apply filtering to folders
+    filtered_folders = [f for f in folders if not is_system_or_hidden(f['name'])]
+    
+    # Apply filtering to files
+    filtered_files = [f for f in files if not is_system_or_hidden(f['name'])]
+
     # Determine parent folder (if not at base)
     parent_folder = None
     if current_path != base_path:
         parent_folder = os.path.dirname(current_path)
 
-    return render_template('browse.html', folders=folders, files=files, current_path=current_path, parent_folder=parent_folder)
-
+    return render_template('browse.html', 
+                         folders=filtered_folders,  # Use filtered folders
+                         files=filtered_files,      # Use filtered files
+                         current_path=current_path, 
+                         parent_folder=parent_folder)
 
 def list_folders_and_files(directory):
     """List folders and files inside a directory."""

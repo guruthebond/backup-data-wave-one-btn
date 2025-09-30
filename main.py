@@ -166,21 +166,27 @@ def display_help_text(help_text, index):
 
 def get_button_press():
     """Detect which button is pressed and return its name."""
-    # Check for UP+DOWN combo first (LEFT/BACK function)
-    if button_up.is_pressed and button_down.is_pressed:
-        time.sleep(0.3)  # Debounce for combo press
-        return "LEFT"
-    
-    # Then check individual buttons
-    elif button_up.is_pressed:
-        time.sleep(0.2)
+    if button_up.is_pressed:
+        time.sleep(0.2)  # Debounce
         return "UP"
     elif button_down.is_pressed:
-        time.sleep(0.2)
+        time.sleep(0.2)  # Debounce
         return "DOWN"
-    elif button_select.is_pressed:
+    elif button_left.is_pressed:
+        time.sleep(0.2)  # Debounce
+        return "LEFT"
+    elif button_right.is_pressed:
+        time.sleep(0.2)  # Debounce
+        return "RIGHT"
+    elif button_key1.is_pressed:
         time.sleep(0.2)
-        return "SELECT"
+        return "KEY1"
+    elif button_key2.is_pressed:
+        time.sleep(0.2)
+        return "KEY2"
+    elif button_key3.is_pressed:
+        time.sleep(0.2)
+        return "KEY3"
     return None
 
 # I2C setup for OLED display
@@ -190,32 +196,39 @@ serial = spi(port=0, device=0, gpio=None)
 device = sh1106(serial)   # Use this for sh1106 1.3  OLED display 
 #device = ssd1306(serial)  # Use this of ssd1306 0.96 OLED display
 
+# Set up buttons
+#button_up = Button(17, hold_time=2, bounce_time=0.3)
+#button_down = Button(27, hold_time=2, bounce_time=0.3)
+#button_select = Button(22, bounce_time=0.3)
 
-# Set up buttons - new GPIO assignments
-button_up = Button(16, bounce_time=0.3)      # KEY3 - brightness control (was GPIO 19)
-button_down = Button(21, bounce_time=0.3)    # KEY1 - settings menu (was GPIO 6)
-button_select = Button(20, bounce_time=0.3)  # KEY2 - reporting/WebUI (was GPIO 13)
-button_left = None  # LEFT is virtual - triggered by UP+DOWN combo
-button_right = None  # Removed as requested
-
-menu_items = [
-    "\uf0c5 Just Copy",
-    "\uf133 Dated Copy",
-    "\uf15c Copy History",
-    "\uf1eb WebUI Backup",
-    "\uf1c0 Disk Info",
-    "\uf7b9 Disk Check",
-    "\uf013 Settings"
-]
+# Set up buttons
+button_up = Button(19, hold_time=2, bounce_time=0.3)
+button_down = Button(6, hold_time=2, bounce_time=0.3)
+button_select = Button(13, hold_time=2, bounce_time=0.3)
+button_left = Button(26, hold_time=2, bounce_time=0.3)
+button_right = Button(5, hold_time=2, bounce_time=0.3)
+button_key3 = Button(21, bounce_time=0.3)  # KEY1 for brightness control
+button_key2 = Button(20, bounce_time=0.3)  # KEY2 for reporting/WebUI
+button_key1 = Button(16, bounce_time=0.3)  # KEY3 for settings menu
 
 def nvme_present():
     if os.path.exists("/dev/nvme0n1p2") or os.path.ismount("/mnt/nvme0n1p2"):
         return True
     return False
 
+menu_items = [
+    "\uf0c5 Just Copy",
+    "\uf133 Dated Copy",
+    "\uf1eb WebUI Backup",
+    "\uf15c Copy History",
+    "\uf1c0 Disk Info",
+    "\uf7b9 Disk Check",
+    "\uf013 Settings"
+]
+
 # Conditionally add Built-in SSD submenu
 if nvme_present():
-    menu_items.insert(-5, "\uf0a0 Built-in SSD")  # Insert before Settings
+    menu_items.insert(4, "\uf0a0 Built-in SSD")  # Insert after Copy History
 
 shutdown_menu_items = ["\uf28d Shutdown", "\uf021 Reboot", "\uf28d Cancel"]
 settings_menu_items = ["\uf129 Version", "\uf56d Update", "\uf021 Reboot", "\uf28d Shutdown", "\uf017 Set Time", "\uf2f1 Factory Reset", "\uf28d Back"]
@@ -264,60 +277,96 @@ def ssd_info_menu(device_path="/dev/nvme0n1p2"):
             y += 16
             draw.text((2, y), f"Free: {free_size}", font=font_medium, fill="white")
         
-        # Wait for any button press to return
-        while not (button_up.is_pressed or button_down.is_pressed or button_select.is_pressed):
+        # Wait for LEFT button press with proper debouncing
+        button_pressed = False
+        
+        while True:
+            if button_left.is_pressed:
+                if not button_pressed:
+                    button_pressed = True
+                    # Wait for button release
+                    while button_left.is_pressed:
+                        time.sleep(0.05)
+                    break  # Exit after button is released
+            else:
+                button_pressed = False
+                
             time.sleep(0.1)
         
     except Exception as e:
         display_message("SSD Info Error", f"Cannot read {device_path}")
-        time.sleep(2)
+        # Wait for LEFT button to dismiss error message
+        button_pressed = False
+        while True:
+            if button_left.is_pressed:
+                if not button_pressed:
+                    button_pressed = True
+                    while button_left.is_pressed:
+                        time.sleep(0.05)
+                    break
+            else:
+                button_pressed = False
+            time.sleep(0.1)
     finally:
         # Always unmount before returning
         if os.path.ismount(mount_point):
             unmount_partition(mount_point)
+        
+        # Small delay to prevent immediate re-detection in calling function
+        time.sleep(0.2)
 
 def ssd_menu():
     global selected_index
     selected_index = 0
+
     while True:
         choice = navigate_menu_time(ssd_menu_items, title="Built-in SSD")
+
+        # Process the choice
         if choice == "\uf1c0 SSD Info":
             ssd_info_menu("/dev/nvme0n1p2")
+            # After returning from SSD Info, reset navigation state
+            selected_index = 0
+
         elif choice == "\uf019 Offload Data":
             # Simple approach: pre-set SSD as source and use Just Copy logic
-            ssd_partition = ("nvme0n1p2", "SSD_SIZE", "SSD_FREE", "PBSSD")  # Mock SSD data
-            
+            ssd_partition = ("nvme0n1p2", "SSD_SIZE", "SSD_FREE", "PBSSD")
+
             # Let user select destination only
-            dest = select_partition('destination', exclude_disk="nvme", allow_nvme_source=True)
+            dest = select_partition('destination', exclude_disk="nvme")
             if dest is None:
                 continue
-            
+
             # Clean previous mounts
             if os.path.ismount("/mnt/src"): unmount_partition("/mnt/src")
             if os.path.ismount("/mnt/dst"): unmount_partition("/mnt/dst")
-            
+
             # Mount SSD as source and destination as usual
             mount_partition(ssd_partition[0], "/mnt/src")
             mount_partition(dest[0], "/mnt/dst")
-            
+
             # Use existing Just Copy logic
-            from copynow_ssd import ssd_mode
-            ssd_mode(device, 'just', buttons=(button_up, button_down, button_select))
-            
+            copy_mode(device, mode="just", buttons=(button_up, button_down, button_select))
+
             # Cleanup
             unmount_partition("/mnt/src")
             unmount_partition("/mnt/dst")
-            
+
         elif choice == "\uf1f9 Format SSD":
             selected_index = 0
             if not confirm_format_nvme():
                 continue
+
         elif choice == "\uf28d Back":
+            # Reset selection and return to main menu
+            selected_index = 0
             return
 
 def confirm_format_nvme():
     confirmations = 0
-    device_path = "/dev/nvme0n1p2"  # adjust if needed
+    device_path = "/dev/nvme0n1p2"
+    last_button_time = 0
+    button_cooldown = 0.3  # 300ms cooldown
 
     # Messages for the two confirmation steps
     messages = ["Format SSD?", "Really Sure?"]
@@ -333,11 +382,15 @@ def confirm_format_nvme():
                     prefix = ">" if i == index else " "
                     draw.text((0, 20 + i * 15), f"{prefix} {opt}", font=font_medium, fill="white")
 
-            # Handle button presses
-            if button_up.is_pressed or button_down.is_pressed:
+            current_time = time.time()
+            
+            # Handle button presses - ADAPTED FOR JOYSTICK with debouncing
+            if (button_up.is_pressed or button_down.is_pressed) and current_time - last_button_time > button_cooldown:
+                last_button_time = current_time
                 index = (index + 1) % 2
                 time.sleep(0.2)
-            elif button_select.is_pressed:
+            elif button_select.is_pressed and current_time - last_button_time > button_cooldown:
+                last_button_time = current_time
                 if index == 0:  # Cancel
                     time.sleep(0.2)
                     return False
@@ -345,6 +398,10 @@ def confirm_format_nvme():
                     confirmations += 1
                     time.sleep(0.2)
                     break
+            elif button_left.is_pressed and current_time - last_button_time > button_cooldown:  # Allow left to cancel
+                last_button_time = current_time
+                time.sleep(0.2)
+                return False
             time.sleep(0.1)
 
     # Show "Formatting..." message
@@ -878,7 +935,7 @@ def backup_data_version():
             draw.text((date_x, date_y), current_date, font=font_medium, fill="white")
 
         # Check if left button is pressed
-        if button_up.is_pressed and button_down.is_pressed:
+        if button_left.is_pressed:
             time.sleep(0.2)  # Debounce delay
             return  # Return to settings menu
 
@@ -945,7 +1002,7 @@ def set_time_manually():
 
     # Step 1: Select Time Zone
     while True:
-        if button_up.is_pressed and button_down.is_pressed:
+        if button_left.is_pressed:
             time.sleep(0.2)
             return
 
@@ -1157,8 +1214,11 @@ def navigate_menu_time(menu_items, title="Settings"):
     
     max_visible_items = 2  # Number of items visible at once
     prev_index = -1  # Track previous index to avoid unnecessary redraws
+    last_button_time = 0
+    button_cooldown = 0.3  # 300ms cooldown
 
     while True:
+        current_time = time.time()
         if selected_index != prev_index:  # Only redraw if selection changed
             with canvas(device) as draw:
                 # Clear the screen
@@ -1198,27 +1258,29 @@ def navigate_menu_time(menu_items, title="Settings"):
 
             prev_index = selected_index
 
-        # Handle button presses
-        if button_up.is_pressed:
+        # Handle button presses with debouncing
+        if button_up.is_pressed and current_time - last_button_time > button_cooldown:
+            last_button_time = current_time
             selected_index = max(0, selected_index - 1)
             time.sleep(0.2)
-        elif button_down.is_pressed:
+        elif button_down.is_pressed and current_time - last_button_time > button_cooldown:
+            last_button_time = current_time
             selected_index = min(len(menu_items) - 1, selected_index + 1)
             time.sleep(0.2)
-        elif button_select.is_pressed:
+        elif button_select.is_pressed and current_time - last_button_time > button_cooldown:
+            last_button_time = current_time
             # Save the current position before exiting
             if menu_items == settings_menu_items:
                 last_settings_menu_index = selected_index
             time.sleep(0.2)
             return menu_items[selected_index]
-        
-        # Check for virtual LEFT button (UP+DOWN combo)
-        elif button_up.is_pressed and button_down.is_pressed:
+        elif button_left.is_pressed and current_time - last_button_time > button_cooldown:
+            last_button_time = current_time
             # Save the current position before exiting
             if menu_items == settings_menu_items:
                 last_settings_menu_index = selected_index
             time.sleep(0.2)
-            return "\uf28d Back"  # Explicit return for back action
+            return "\uf28d Back"
 
         time.sleep(0.1)  # Reduce CPU usage
 
@@ -1330,7 +1392,9 @@ def notify_incomplete_session(device):
 
         # Wait for any button press to dismiss
         while not (button_up.is_pressed or button_down.is_pressed or 
-                   button_select.is_pressed) :
+                   button_left.is_pressed or button_right.is_pressed or 
+                   button_select.is_pressed or button_key1.is_pressed or 
+                   button_key2.is_pressed or button_key3.is_pressed):
             time.sleep(0.1)
 
         # Clear session file so it won't nag again
@@ -1388,29 +1452,52 @@ def display_qr_code(url, mode="wifi"):
     last_toggle = time.time()
     current_label = labels[label_index]
     force_redraw = True
+    flash_state = True
+    last_flash = time.time()
 
-
-    while not (button_up.is_pressed and button_down.is_pressed):
+    while not button_left.is_pressed:
         current_time = time.time()
-        if current_time - last_toggle >= 2:
-            label_index = (label_index + 1) % len(labels)
-            current_label = labels[label_index]
-            last_toggle = current_time
-            force_redraw = True
+        
+        # Quick check if rsync copy is running
+        copy_active = False
+        try:
+            result = subprocess.run(['pgrep', 'rsync'], capture_output=True, text=True)
+            copy_active = (result.returncode == 0)
+        except:
+            pass
+
+        if copy_active:
+            # Flash "Copy-in-Progress"
+            if current_time - last_flash > 0.5:  # Flash every 0.5 seconds
+                flash_state = not flash_state
+                last_flash = current_time
+                force_redraw = True
+            current_label = "Copy-in-Progress"
+        else:
+            # Normal rotating labels
+            if current_time - last_toggle >= 2:
+                label_index = (label_index + 1) % len(labels)
+                current_label = labels[label_index]
+                last_toggle = current_time
+                force_redraw = True
+            flash_state = True  # Always visible when not copying
 
         if force_redraw:
             with canvas(device) as draw:
-                # Draw QR only once per label switch
+                # Draw QR code
                 for x in range(qr_w):
                     for y in range(qr_h):
                         if img.getpixel((x, y)) == 0:
                             draw.point((qr_x + x, qr_y + y), fill="white")
 
+                # Draw text (flashing during copy)
                 text_bbox = draw.textbbox((0, 0), current_label, font=font)
                 text_width = text_bbox[2] - text_bbox[0]
                 text_x = (device.width - text_width) // 2
                 text_y = device.height - 12
-                draw.text((text_x, text_y), current_label, font=font, fill="white")
+                
+                if flash_state:  # Only draw when visible
+                    draw.text((text_x, text_y), current_label, font=font, fill="white")
 
             force_redraw = False
 
@@ -1451,10 +1538,6 @@ def get_partition_info(mount_point):
     free_size = (stat.f_bavail * stat.f_frsize) / (1024**3)   # Available free space for unprivileged users
     return f"{total_size:.2f}GB", f"{free_size:.2f}GB"
 
-import psutil
-import shutil
-import time
-
 def disk_info_menu():
     """
     Displays total and free sizes of mounted USB partitions with scrolling 
@@ -1462,7 +1545,7 @@ def disk_info_menu():
     """
     mounted_partitions = []
     partitions = get_usb_partitions(exclude_disk="mmcblk")  
-    
+
     # Mount eligible partitions
     for partition in partitions:
         if float(partition[1].replace("GB", "")) >= 1:  # Only consider partitions >= 1GB
@@ -1471,23 +1554,23 @@ def disk_info_menu():
             total_size, free_size = get_partition_info(mount_point)
             label = get_partition_label(partition[0])  # Get label (max 5 chars)
             mounted_partitions.append((label, total_size, free_size, mount_point))
-    
+
     # If no partitions found, show message and return
     if not mounted_partitions:
         display_message("No Eligible Disks", "Connect USB Disk")
         time.sleep(2)
         return
-    
+
     selected_index = 0
     prev_index = -1  # Track previous selection
-    
+
     while True:
         if selected_index != prev_index:  # Update display only if index changes
             with canvas(device) as draw:
                 draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
                 draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
                 draw.text((2, 1), "Disk Info", font=font_small, fill="black")
-                
+
                 # Display current partition info
                 current_partition = mounted_partitions[selected_index]
                 y = 20
@@ -1496,33 +1579,28 @@ def disk_info_menu():
                 draw.text((2, y), f"Total: {current_partition[1]}", font=font_medium, fill="white")
                 y += 16
                 draw.text((2, y), f"Free: {current_partition[2]}", font=font_medium, fill="white")
-                
+
                 # Draw up/down arrows if scrolling is available
                 if selected_index > 0:
                     draw.text((device.width - 10, 18), "▲", font=font_small, fill="white")
                 if selected_index < len(mounted_partitions) - 1:
                     draw.text((device.width - 10, device.height - 10), "▼", font=font_small, fill="white")
-            
+
             prev_index = selected_index  # Store last index update
-        
-        # Check for UP+DOWN combo first (return to menu)
-        if button_up.is_pressed and button_down.is_pressed:
-            time.sleep(0.2)
-            break  # Exit the menu
-        
-        # Handle other button presses
+
+        # Handle button presses
         if button_up.is_pressed and selected_index > 0:
             selected_index -= 1
             time.sleep(0.2)
         elif button_down.is_pressed and selected_index < len(mounted_partitions) - 1:
             selected_index += 1
             time.sleep(0.2)
-        elif button_select.is_pressed:
+        elif button_select.is_pressed or button_left.is_pressed:
             time.sleep(0.2)
             break  # Exit the menu
-        
+
         time.sleep(0.1)  # Reduce CPU usage
-    
+
     # Unmount partitions before returning to the menu
     for _, _, _, mount_point in mounted_partitions:
         unmount_partition(mount_point)
@@ -1588,20 +1666,17 @@ def scroll_logs(logs):
             display_log_entry_with_arrows(logs[current_index], current_index)
             prev_index = current_index
 
-        # Check for UP+DOWN combo first (this is the key fix)
-        if button_up.is_pressed and button_down.is_pressed:
-            time.sleep(0.2)
-            return  # Exit immediately
-        
-        # Then check individual buttons
-        elif button_up.is_pressed and current_index > 0:
+        if button_up.is_pressed and current_index > 0:
             current_index -= 1
             time.sleep(0.2)
         elif button_down.is_pressed and current_index < total_logs - 1:
             current_index += 1
             time.sleep(0.2)
-        
+        elif button_left.is_pressed:
+            time.sleep(0.2)
+            return
         time.sleep(0.1)  # Reduce CPU usage
+
 
 # Copy History menu logic
 def copy_history_menu():
@@ -1635,43 +1710,31 @@ def disk_check(partition):
     display_message(f"Disk Check Complete", sub_message=f"/dev/{partition}")
     time.sleep(2)
 
-
 def disk_check_menu():
     while True:
-        partitions = get_usb_partitions(exclude_disk="mmcblk")
+        partitions = get_usb_partitions(exclude_disk="mmcblk")  # Exclude Raspberry Pi's SD card
         if not partitions:
             display_message("No Disks Found", sub_message="Connect a Disk")
             time.sleep(2)
             return
         
         selected_index = 0
-        prev_index = -1
-        
         while True:
-            # Only redraw if selection changed
-            if selected_index != prev_index:
-                display_selection(partitions, selected_index, title="Select Disk to Check")
-                prev_index = selected_index
-            
-            # Check for UP+DOWN combo first (return to menu)
-            if button_up.is_pressed and button_down.is_pressed:
-                time.sleep(0.2)
-                return
-            
-            # Handle other button presses
+            display_selection(partitions, selected_index, title="Select Disk to Check")
             if button_up.is_pressed:
                 selected_index = (selected_index - 1) % len(partitions)
                 time.sleep(0.2)
-            elif button_down.is_pressed:
+            if button_down.is_pressed:
                 selected_index = (selected_index + 1) % len(partitions)
                 time.sleep(0.2)
-            elif button_select.is_pressed:
+            if button_select.is_pressed:
                 time.sleep(0.2)
                 partition = partitions[selected_index][0]
                 disk_check(partition)
                 return
-            
-            time.sleep(0.1)  # Reduce CPU usage
+            if button_left.is_pressed:
+                time.sleep(0.2)
+                return
 
 def display_menu(menu, title="PurrfectBackup"):
     global selected_index
@@ -1731,6 +1794,23 @@ def navigate_menu(menu, title="PurrfectBackup", check_special_buttons=True):
         if current_time - last_button_check >= 0.1 and check_special_buttons:
             last_button_check = current_time
             
+            if button_key1.is_pressed:
+                handle_brightness_control()
+                time.sleep(0.5)
+                return "KEY1"
+                
+            if button_key2.is_pressed:
+                #handle_reporting_mode()
+                disk_info_menu()
+                time.sleep(0.5)
+                selected_index = 0
+                prev_index = -1
+                #return "KEY2"
+                
+            if button_key3.is_pressed:
+                time.sleep(0.5)
+                return "KEY3"
+        
         # Only update display if selection changed
         if selected_index != prev_index:
             display_menu(menu, title)
@@ -1749,6 +1829,8 @@ def navigate_menu(menu, title="PurrfectBackup", check_special_buttons=True):
                 last_main_menu_index = selected_index
             time.sleep(0.2)
             return menu[selected_index]
+        elif button_right.is_pressed:  # Help button
+            time.sleep(0.2)
 
         time.sleep(0.1)  # Reduce CPU usage
 
@@ -1932,7 +2014,7 @@ def get_usb_partitions(exclude_disk=None):
 def wait_for_new_device(exclude_disk):
     display_message("Plug Destination", "Hard Drive")
     while True:
-        if button_up.is_pressed and button_down.is_pressed:
+        if button_left.is_pressed:
             return None
 
         partitions = get_usb_partitions(exclude_disk=exclude_disk)
@@ -1942,19 +2024,50 @@ def wait_for_new_device(exclude_disk):
 
 def select_partition(mode, exclude_disk=None, allow_nvme_source=False):
     while True:
-        # Check if both buttons are pressed to return to the main menu
-        if button_up.is_pressed and button_down.is_pressed:
+        # Check if left button is pressed to return to the main menu
+        if button_left.is_pressed:
+            # Wait for button release
+            while button_left.is_pressed:
+                time.sleep(0.05)
             return None
 
         partitions = get_usb_partitions(exclude_disk=exclude_disk)
-
+        
+        # ADD THIS FILTERING LOGIC:
         if mode == 'source' and not allow_nvme_source:
             partitions = [p for p in partitions if not p[0].startswith('nvme')]
-
+        
         if not partitions:
+            # Use the exact same display as before
             display_message(f"Plug {mode.capitalize()} Device!", "Disk or Card")
-            time.sleep(2)
-            continue
+            
+            # Wait for either LEFT button or new device detection with proper button handling
+            last_check = time.time()
+            button_pressed = False
+            
+            while True:
+                # Check for LEFT button with press-and-release
+                if button_left.is_pressed and not button_pressed:
+                    button_pressed = True
+                    while button_left.is_pressed:
+                        time.sleep(0.05)
+                    return None
+                elif not button_left.is_pressed:
+                    button_pressed = False
+                
+                # Check for new partitions every 1 second (same as before)
+                current_time = time.time()
+                if current_time - last_check > 1:
+                    partitions = get_usb_partitions(exclude_disk=exclude_disk)
+                    # Apply the same filter for new partitions
+                    if mode == 'source' and not allow_nvme_source:
+                        partitions = [p for p in partitions if not p[0].startswith('nvme')]
+                    if partitions:
+                        break  # Exit the waiting loop if device found
+                    last_check = current_time
+                
+                time.sleep(0.1)
+            continue  # Go back to main loop to process the new partitions
 
         if len(partitions) == 1:
             partition = partitions[0]
@@ -1962,33 +2075,45 @@ def select_partition(mode, exclude_disk=None, allow_nvme_source=False):
             return partition
 
         selected_index = 0
+        button_pressed = False
+        
         while True:
-            # Display two partitions at a time
+            # Display two partitions at a time (same as before)
             start = (selected_index // 2) * 2  # Calculate the starting index for the pair
             end = start + 2  # Display two partitions
             display_partitions = partitions[start:end]  # Get the current pair of partitions
 
-            # Display the partitions with the existing layout
+            # Display the partitions with the existing layout (same as before)
             display_selection(display_partitions, selected_index % 2, f"{mode.upper()} DISK")
 
-            if button_up.is_pressed and button_down.is_pressed:
-                    return None
-            else:
-                # Reset the timer if both buttons are not pressed together anymore
-                start_press_time = None
-
-            if button_up.is_pressed:
-                selected_index = (selected_index - 1) % len(partitions)
-                time.sleep(0.2)
-            if button_down.is_pressed:
-                selected_index = (selected_index + 1) % len(partitions)
-                time.sleep(0.2)
-            if button_select.is_pressed:
-                time.sleep(0.2)
-                return partitions[selected_index]
-            if button_up.is_pressed and button_down.is_pressed:
-                time.sleep(0.2)
+            # Handle button presses with press-and-release logic
+            if button_left.is_pressed and not button_pressed:
+                button_pressed = True
+                while button_left.is_pressed:
+                    time.sleep(0.05)
                 return None
+
+            elif button_up.is_pressed and not button_pressed:
+                button_pressed = True
+                while button_up.is_pressed:
+                    time.sleep(0.05)
+                selected_index = (selected_index - 1) % len(partitions)
+                
+            elif button_down.is_pressed and not button_pressed:
+                button_pressed = True
+                while button_down.is_pressed:
+                    time.sleep(0.05)
+                selected_index = (selected_index + 1) % len(partitions)
+                
+            elif button_select.is_pressed and not button_pressed:
+                button_pressed = True
+                while button_select.is_pressed:
+                    time.sleep(0.05)
+                return partitions[selected_index]
+                
+            else:
+                button_pressed = False
+
             time.sleep(0.1) # Avoid High CPU
 
 def mount_partition(partition, mount_point):
@@ -2031,7 +2156,7 @@ def display_summary(source, dest):
             draw.rectangle((x - 2, device.height - 15, x + text_width + 2, device.height), outline="black", fill="white")
             draw.text((x, device.height - 15), select_text, font=font_small, fill="black")
 
-        if button_up.is_pressed and button_down.is_pressed:
+        if button_left.is_pressed:
             time.sleep(0.2)
             return None
 
@@ -2071,7 +2196,7 @@ def display_summary_dated(source, dest):
             draw.rectangle((x - 2, device.height - 15, x + text_width + 2, device.height), outline="black", fill="white")
             draw.text((x, device.height - 15), select_text, font=font_small, fill="black")
 
-        if button_up.is_pressed and button_down.is_pressed:
+        if button_left.is_pressed:
             time.sleep(0.2)
             return None
 
@@ -2095,11 +2220,30 @@ def main():
             # Main menu navigation with special key handling
             choice = navigate_menu(menu_items, "PurrfectBackup", True)
 
+            # --- Handle KEY1-3 shortcuts ---
+            if choice == "KEY1":
+                handle_brightness_control()
+                continue
+            elif choice == "KEY2":
+                #handle_reporting_mode()
+                disk_info_menu()
+                # --- Debounce and cooldown ---
+                while button_key2.is_pressed:
+                    time.sleep(0.1)  # Wait for full release
+                time.sleep(0.5)  # Prevent immediate reentry
+                continue
+            elif choice == "KEY3":
+                handle_chkfile_mode()
+                # --- Debounce and cooldown ---
+                while button_key3.is_pressed:
+                    time.sleep(0.1)  # Wait for full release
+                time.sleep(0.5)  # Prevent immediate reentry
+                continue
 
             # --- Handle regular menu choices ---
             if choice == "\uf0c5 Just Copy":
                 print("Starting Just Copy...")
-                source = select_partition('source', allow_nvme_source=False)
+                source = select_partition('source', allow_nvme_source=False)  # ADD allow_nvme_source=False
                 if source is None:
                     continue
                 dest = select_partition('destination', exclude_disk=source[0][:3])
@@ -2122,7 +2266,7 @@ def main():
 
             elif choice == "\uf133 Dated Copy":
                 print("Starting Dated Copy...")
-                source = select_partition('source', allow_nvme_source=False)
+                source = select_partition('source', allow_nvme_source=False)  # ADD allow_nvme_source=False
                 if source is None:
                     continue
                 dest = select_partition('destination', exclude_disk=source[0][:3])
@@ -2156,7 +2300,7 @@ def main():
                 start_flask_service()
                 display_qr_code(f"http://{ip_address}/main", mode="wifi")
 
-                while not button_up.is_pressed and button_down.is_pressed:
+                while not button_left.is_pressed:
                     time.sleep(0.1)
 
                 stop_flask_service()
@@ -2171,7 +2315,7 @@ def main():
                 print("Running Disk Check...")
                 disk_check_menu()
 
-            elif choice == "\uf0a0 Built-in SSD":   # 🔥 New case
+            elif choice == "\uf0a0 Built-in SSD":   # New SSD menu
                 ssd_menu()
 
             elif choice == "\uf15c Copy History":

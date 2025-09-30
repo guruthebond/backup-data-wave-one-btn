@@ -146,8 +146,38 @@ def rsync_file(device, srcp, destp, count, total, mode):
             time.sleep(0.5)
             return 1
 
-        cmd = ["rsync", "-a", "--partial", "--inplace",
-               "--human-readable", "--info=progress2", "--exclude=.*", srcp, destp]
+        cmd = [
+    "rsync", "-rlpt", "--partial", "--inplace",
+    "--human-readable", "--info=progress2",
+
+    # Windows system exclusions using --filter
+    "--filter=- /System Volume Information/",
+    "--filter=- /$RECYCLE.BIN/",
+    "--filter=- /$Recycle.Bin/",
+    "--filter=- /RECYCLER/",
+    "--filter=- /Thumbs.db",
+    "--filter=- /desktop.ini",
+
+    # macOS exclusions
+    "--filter=- /.DS_Store",
+    "--filter=- /._*",
+    "--filter=- /.AppleDouble/",
+    "--filter=- /.apdisk",
+    "--filter=- /.fseventsd/",
+    "--filter=- /.Spotlight-V100/",
+    "--filter=- /.TemporaryItems/",
+    "--filter=- /.Trashes/",
+    "--filter=- /__MACOSX/",
+
+    # General exclusions
+    "--prune-empty-dirs",         # Do not create empty dirs
+
+    # Source and destination
+    srcp,
+    destp
+]
+
+
         rsync_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         try:
@@ -408,10 +438,12 @@ def copy_mode(device, mode, buttons=None):
                 draw.text((10, 40), "Please wait...", font=SMALL_FONT, fill="white")
             if mode == 'just':
                 import report
-                report.generate_reports()
+                report.generate_reports('/mnt/src', '/mnt/dst')
+                #report.generate_reports()
             else:
                  import report_dated
-                 report_dated.generate_reports()
+                 report_dated.generate_reports('/mnt/src', '/mnt/dst')
+                 #report_dated.generate_reports()
             time.sleep(2)
         with canvas(device) as draw:
             draw.rectangle((0, 0, device.width - 1, device.height - 1), outline="white", fill="black")
