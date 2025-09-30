@@ -506,6 +506,7 @@ def confirm_format_nvme():
                     confirmations += 1
                     break
             elif button_left.is_pressed and current_time - last_button_time > button_cooldown:
+                time.sleep(0.2)
                 return False
             
             time.sleep(0.1)
