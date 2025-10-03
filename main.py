@@ -1951,6 +1951,18 @@ def navigate_menu(menu, title="PurrfectBackup", check_special_buttons=True):
                 last_main_menu_index = selected_index
             time.sleep(0.2)
             return menu[selected_index]
+        elif button_right.is_pressed and menu[selected_index] == "\uf013 Settings →":
+            # Save position before leaving
+            if menu == menu_items:
+                last_main_menu_index = selected_index
+            time.sleep(0.2)
+            return menu[selected_index]
+        elif button_right.is_pressed and menu[selected_index] == "\uf0a0 Built-in SSD →":
+            # Save position before leaving
+            if menu == menu_items:
+                last_main_menu_index = selected_index
+            time.sleep(0.2)
+            return menu[selected_index]
         elif button_right.is_pressed:  # Help button
             time.sleep(0.2)
 
