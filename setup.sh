@@ -261,6 +261,8 @@ cp /etc/systemd/system/backup-data.service /etc/systemd/system/web-ui-flask-app.
 rm /root/backup-data-stable/copy-log.csv
 touch /root/backup-data-stable/copy-log.csv 
 rm -rf /root/backup-data-stable/web-ui/log/* 
+echo "Set power button delay to 3 seconds"
+echo -e "\nHoldoffTimeoutSec=3\nHandlePowerKey=ignore\nHandlePowerKeyLongPress=poweroff" | sudo tee -a /etc/systemd/logind.conf && sudo systemctl restart systemd-logind
 
 # Final instructions
 echo "--------------------------------------"
