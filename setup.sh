@@ -267,6 +267,7 @@ echo "Remove Fake Clock"
 sudo systemctl disable fake-hwclock
 sudo systemctl stop fake-hwclock
 sudo apt remove fake-hwclock -y
+sudo rm /etc/cron.hourly/fake-hwclock
 # Final instructions
 echo "--------------------------------------"
 echo "Setup complete!"
