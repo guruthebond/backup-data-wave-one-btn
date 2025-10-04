@@ -1971,6 +1971,10 @@ def navigate_menu(menu, title="PurrfectBackup", check_special_buttons=True):
     max_visible_items = 3  # Number of visible items
     last_button_check = time.time()
     
+    # Double-tap tracking
+    last_up_press_time = 0
+    double_tap_threshold = 0.5  # 500ms for double-tap
+    
     while True:
         # Check for special button presses every 100ms
         current_time = time.time()
@@ -1983,12 +1987,10 @@ def navigate_menu(menu, title="PurrfectBackup", check_special_buttons=True):
                 return "KEY1"
                 
             if button_key2.is_pressed:
-                #handle_reporting_mode()
                 disk_info_menu()
                 time.sleep(0.5)
                 selected_index = 0
                 prev_index = -1
-                #return "KEY2"
                 
             if button_key3.is_pressed:
                 time.sleep(0.5)
@@ -2001,31 +2003,62 @@ def navigate_menu(menu, title="PurrfectBackup", check_special_buttons=True):
 
         # Handle navigation buttons
         if button_up.is_pressed:
-            selected_index = max(0, selected_index - 1)
+            current_time = time.time()
+            
+            # Check for double-tap on "Just Copy"
+            if selected_index == 0 and menu == menu_items:
+                if current_time - last_up_press_time < double_tap_threshold:
+                    # Double-tap detected - show date/time
+                    display_current_datetime()
+                    # After returning from date/time, refresh the menu
+                    prev_index = -1  # Force redraw
+                    last_up_press_time = 0  # Reset double-tap timer
+                else:
+                    # Single tap - normal navigation or store time for potential double-tap
+                    last_up_press_time = current_time
+                    selected_index = max(0, selected_index - 1)  # Normal up navigation
+            else:
+                # Normal up navigation for other items
+                selected_index = max(0, selected_index - 1)
+            
             time.sleep(0.2)
+                
         elif button_down.is_pressed:
             selected_index = min(len(menu) - 1, selected_index + 1)
+            last_up_press_time = 0  # Reset double-tap timer on down press
             time.sleep(0.2)
+            
         elif button_select.is_pressed:
             # Save position before leaving
             if menu == menu_items:
                 last_main_menu_index = selected_index
+            last_up_press_time = 0  # Reset double-tap timer
             time.sleep(0.2)
             return menu[selected_index]
+            
         elif button_right.is_pressed and menu[selected_index] == "\uf013 Settings →":
             # Save position before leaving
             if menu == menu_items:
                 last_main_menu_index = selected_index
+            last_up_press_time = 0  # Reset double-tap timer
             time.sleep(0.2)
             return menu[selected_index]
+            
         elif button_right.is_pressed and menu[selected_index] == "\uf0a0 Built-in SSD →":
             # Save position before leaving
             if menu == menu_items:
                 last_main_menu_index = selected_index
+            last_up_press_time = 0  # Reset double-tap timer
             time.sleep(0.2)
             return menu[selected_index]
+            
         elif button_right.is_pressed:  # Help button
+            last_up_press_time = 0  # Reset double-tap timer
             time.sleep(0.2)
+
+        # Clear double-tap timer if too much time has passed
+        if last_up_press_time > 0 and current_time - last_up_press_time > double_tap_threshold:
+            last_up_press_time = 0
 
         time.sleep(0.1)  # Reduce CPU usage
 
