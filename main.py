@@ -231,7 +231,7 @@ if nvme_present():
     menu_items.insert(4, "\uf0a0 Built-in SSD →")  # Insert after Copy History
 
 shutdown_menu_items = ["\uf28d Shutdown", "\uf021 Reboot", "\uf28d Cancel"]
-settings_menu_items = ["\uf129 Version", "\uf56d Update", "\uf021 Reboot", "\uf28d Shutdown", "\uf017 Set Time", "\uf2f1 Factory Reset"]
+settings_menu_items = ["\uf017 Date/Time", "\uf129 Version", "\uf56d Update", "\uf021 Reboot", "\uf28d Shutdown",  "\uf2f1 Factory Reset"]
 selected_index = 0
 
 # Built-in SSD submenu items
@@ -241,6 +241,67 @@ ssd_menu_items = [
     "\uf1f9 Format SSD",     # formats nvme0n1p2 in exFAT (double confirmation)
     #"\uf28d Back"            # go back to main menu
 ]
+
+def display_current_datetime():
+    """Display real-time updating date and time with navigation"""
+    last_update = 0
+    update_interval = 1  # Update every second
+    
+    while True:
+        current_time = time.time()
+        
+        # Only update if at least 1 second has passed
+        if current_time - last_update >= update_interval:
+            # Get current date and time
+            now = datetime.datetime.now()
+            date_str = now.strftime("%d %b %Y")    # "04 Oct 2024"
+            time_str = now.strftime("%H:%M:%S")    # "14:30:25" with seconds
+            timezone_str = get_utc_offset()        # "UTC+5:30"
+            
+            # Shorten timezone if too long
+            if len(timezone_str) > 8:
+                timezone_str = timezone_str.replace("UTC", "")  # Just show "+5:30"
+            
+            with canvas(device) as draw:
+                # Clear screen
+                draw.rectangle((0, 0, device.width, device.height), outline="black", fill="black")
+                
+                # Display date centered (top section) - medium font
+                date_width = draw.textlength(date_str, font=font_medium)
+                date_x = (device.width - date_width) // 2
+                draw.text((date_x, 6), date_str, font=font_medium, fill="white")
+                
+                # Display time centered (middle section) - medium font
+                time_width = draw.textlength(time_str, font=font_medium)
+                time_x = (device.width - time_width) // 2
+                draw.text((time_x, 23), time_str, font=font_medium, fill="white")
+                
+                # Display timezone centered
+                tz_width = draw.textlength(timezone_str, font=font_small)
+                tz_x = (device.width - tz_width) // 2
+                draw.text((tz_x, 40), timezone_str, font=font_small, fill="white")
+                
+                # Separator line above navigation
+                draw.line((0, 52, device.width - 0, 52), fill="white", width=1)
+                
+                # Navigation hints at bottom
+                draw.text((8, 52), "← Back", font=font_small, fill="white")
+                draw.text((device.width - 35, 52), "Set →", font=font_small, fill="white")
+                
+            last_update = current_time
+        
+        # Check for LEFT button to exit
+        if button_left.is_pressed:
+            time.sleep(0.2)
+            return
+        
+        # Check for RIGHT button to go to time settings
+        if button_right.is_pressed:
+            time.sleep(0.2)
+            set_time_manually()  # Go to existing time setting function
+            return
+        
+        time.sleep(0.1)  # Small delay to reduce CPU usage
 
 
 def ssd_info_menu(device_path="/dev/nvme0n1p2"):
@@ -2479,8 +2540,9 @@ def main():
                 print("Entering Settings...")
                 while True:
                     settings_choice = navigate_menu_time(settings_menu_items, reset_position=True)
-                    if settings_choice == "\uf017 Set Time":
-                        set_time_manually()
+                    if settings_choice == "\uf017 Date/Time":
+                        print("Showing Current Date/Time...")
+                        display_current_datetime()
                     elif settings_choice == "\uf28d Shutdown":
                         os.system("sudo shutdown now")
                         with canvas(device) as draw:
