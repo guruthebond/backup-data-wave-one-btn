@@ -263,7 +263,10 @@ touch /root/backup-data-stable/copy-log.csv
 rm -rf /root/backup-data-stable/web-ui/log/* 
 echo "Set power button delay to 3 seconds"
 echo -e "\nHoldoffTimeoutSec=3\nHandlePowerKey=ignore\nHandlePowerKeyLongPress=poweroff" | sudo tee -a /etc/systemd/logind.conf && sudo systemctl restart systemd-logind
-
+echo "Remove Fake Clock"
+sudo systemctl disable fake-hwclock
+sudo systemctl stop fake-hwclock
+sudo apt remove fake-hwclock -y
 # Final instructions
 echo "--------------------------------------"
 echo "Setup complete!"
