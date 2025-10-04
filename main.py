@@ -2426,11 +2426,30 @@ def main():
 
                 font_icons = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/lineawesome-webfont.ttf", 12)
                 display_message_wifi_oled("Connect Phone", " BackMeUp", " 11223344", "Then [Select]", font_icons=font_icons)
-
-                while not button_select.is_pressed:
+                cancelled = False
+    
+                # Wait for either SELECT to proceed or LEFT to cancel
+                while True:
+                    if button_select.is_pressed:
+                        time.sleep(0.2)
+                        break
+                    elif button_left.is_pressed:
+                        time.sleep(0.2)
+                        stop_flask_service()
+                        display_message_wifi_oled("Cancelled", "Returning to", "Main menu...", font_icons=font_icons)
+                        time.sleep(2)
+                        cancelled = True
+                        break
                     time.sleep(0.1)
 
-                time.sleep(0.5)  # Debounce
+                # If cancelled, skip WebUI setup and return to main menu
+                if cancelled:
+                    # Clean up hostapd since we started it
+                    stop_flask_service()  # This will also stop hostapd
+                    continue  # Go back to main menu
+
+                # Only proceed with WebUI if not cancelled
+                time.sleep(0.5)
                 start_flask_service()
                 display_qr_code(f"http://{ip_address}/main", mode="wifi")
 
