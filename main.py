@@ -21,7 +21,7 @@ import re
 import gpiozero.pins.lgpio
 import lgpio
 import pytz
-import datetime
+import datetime as dt
 
 
 # Add these near the top with other global variables
