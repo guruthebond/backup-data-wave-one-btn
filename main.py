@@ -2545,7 +2545,7 @@ def main():
                 # Only proceed with WebUI if not cancelled
                 time.sleep(0.5)
                 start_flask_service()
-                display_qr_code(f"http://{ip_address}/main", mode="wifi")
+                display_qr_code(f"http://{ip_address}", mode="wifi")
 
                 while not button_left.is_pressed:
                     time.sleep(0.1)
