@@ -253,7 +253,7 @@ def display_current_datetime():
         # Only update if at least 1 second has passed
         if current_time - last_update >= update_interval:
             # Get current date and time
-            now = datetime.datetime.now()
+            now = datetime.now()
             date_str = now.strftime("%d %b %Y")    # "04 Oct 2024"
             time_str = now.strftime("%H:%M:%S")    # "14:30:25" with seconds
             timezone_str = get_utc_offset()        # "UTC+5:30"
@@ -634,7 +634,7 @@ def handle_brightness_control():
             last_press_time = now
 
         # Date, time, UTC
-        now_dt = datetime.datetime.now()
+        now_dt = datetime.now()
         date_str = now_dt.strftime("%d %b %Y")
         time_str = now_dt.strftime("%H:%M:%S")
         offset_str = get_utc_offset()
@@ -1185,7 +1185,7 @@ def set_time_manually():
             return
 
         system_utc_offset = get_utc_offset()  # Get system timezone as UTC+X format
-        current_time = datetime.datetime.now().strftime("%H:%M:%S")  # Get current time
+        current_time = datetime.now().strftime("%H:%M:%S")  # Get current time
         
         with canvas(device) as draw:
             # Title and separator
