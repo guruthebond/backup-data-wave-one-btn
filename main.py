@@ -1152,7 +1152,7 @@ def get_utc_offset():
     """Get the current system timezone and convert it to UTC offset format (e.g., UTC+5:30)."""
     system_tz = os.popen("timedatectl show --property=Timezone --value").read().strip()
     tz = pytz.timezone(system_tz)
-    now = datetime.datetime.now(tz)
+    now = datetime.now(tz)
     
     # Get UTC offset in hours and minutes
     offset_sec = now.utcoffset().total_seconds()
