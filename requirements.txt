@@ -54,3 +54,4 @@ rpi-lgpio==0.6
 pytz
 psutil
 flask-session
+pycryptodome==3.23.0
