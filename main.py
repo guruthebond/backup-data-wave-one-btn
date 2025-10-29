@@ -22,6 +22,13 @@ import gpiozero.pins.lgpio
 import lgpio
 import pytz
 import datetime as dt
+import hashlib
+import base64
+import json
+import sys
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
 
 
 # Add these near the top with other global variables
@@ -210,6 +217,415 @@ button_right = Button(5, hold_time=2, bounce_time=0.3)
 button_key3 = Button(21, bounce_time=0.3)  # KEY1 for brightness control
 button_key2 = Button(20, bounce_time=0.3)  # KEY2 for reporting/WebUI
 button_key1 = Button(16, bounce_time=0.3)  # KEY3 for settings menu
+
+
+def check_sd_card_binding():
+    """
+    Check for master test license or hardware-bound license
+    """
+    master_license_file = "/backup-data/master_test.lic"
+    hardware_license_file = "/backup-data/license.lic"
+    current_hardware_id = get_hardware_id()
+    
+    # First, check if hardware-bound license exists (highest priority)
+    if os.path.exists(hardware_license_file):
+        if validate_license(hardware_license_file, current_hardware_id):
+            return True  # Hardware-bound license valid
+        else:
+            return handle_license_mismatch()  # Use new handler with replace option
+    
+    # Second, check for master test license
+    if os.path.exists(master_license_file):
+        if validate_master_license(master_license_file):
+            display_message("MASTER TEST MODE", "Unlimited testing")
+            time.sleep(2)
+            return True  # Master test license valid
+    
+    # No valid license found - must activate
+    return require_activation(current_hardware_id)
+
+def get_hardware_id():
+    """
+    Get unique hardware ID from Pi serial
+    """
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                if line.startswith('Serial'):
+                    serial = line.split(':')[1].strip()
+                    return hashlib.sha256(serial.encode()).hexdigest()[:32]
+    except:
+        pass
+    return "unknown"
+
+def validate_license(license_file, current_hardware_id):
+    """
+    Validate hardware-bound license
+    """
+    try:
+        with open(license_file, 'r') as f:
+            license_data = json.load(f)
+        
+        # Check if it's a hardware-bound license
+        if license_data.get('type') != 'hardware_bound':
+            return False
+        
+        public_key = RSA.import_key(license_data['public_key'])
+        signature = base64.b64decode(license_data['signature'])
+        stored_hardware_id = license_data['hardware_id']
+        
+        # Verify signature
+        h = SHA256.new(stored_hardware_id.encode())
+        pkcs1_15.new(public_key).verify(h, signature)
+        
+        # Verify hardware ID matches
+        return stored_hardware_id == current_hardware_id
+        
+    except:
+        return False
+
+def validate_master_license(master_license_file):
+    """
+    Validate master test license (works on any hardware)
+    """
+    try:
+        with open(master_license_file, 'r') as f:
+            license_data = json.load(f)
+        
+        # Check if it's a master license
+        if license_data.get('type') != 'master_test':
+            return False
+        
+        public_key = RSA.import_key(license_data['public_key'])
+        signature = base64.b64decode(license_data['signature'])
+        master_key = license_data['master_key']
+        
+        # Verify signature
+        h = SHA256.new(master_key.encode())
+        pkcs1_15.new(public_key).verify(h, signature)
+        
+        return True
+        
+    except:
+        return False
+
+def require_activation(current_hardware_id):
+    """
+    No license found - offer activation options with serial display
+    """
+    hardware_serial = get_hardware_serial()
+    options = ["Activate Hardware", "Use Test Mode", "Shutdown"]
+    selected_index = 0
+    
+    while True:
+        with canvas(device) as draw:
+            # Show hardware serial at top
+            draw.text((2, 0), f"{hardware_serial}", font=font_small, fill="white")
+            draw.text((2, 12), "Use this for license", font=font_small, fill="white")
+            
+            y = 25
+            for i, option in enumerate(options):
+                if i == selected_index:
+                    draw.rectangle((2, y-1, device.width-2, y+11), outline="white", fill="white")
+                    draw.text((4, y), option, font=font_small, fill="black")
+                else:
+                    draw.text((4, y), option, font=font_small, fill="white")
+                y += 13
+        
+        if button_up.is_pressed:
+            selected_index = (selected_index - 1) % len(options)
+            time.sleep(0.2)
+        elif button_down.is_pressed:
+            selected_index = (selected_index + 1) % len(options)
+            time.sleep(0.2)
+        elif button_select.is_pressed:
+            if selected_index == 0:  # Activate Hardware License
+                success = activate_hardware_license(current_hardware_id)
+                if success:
+                    return True  # Activation successful, system will reboot
+                else:
+                    continue  # Activation failed, show menu again
+            elif selected_index == 1:  # Use Master Test Mode
+                return check_for_master_license()
+            elif selected_index == 2:  # Shutdown
+                os.system("sudo shutdown now")
+                return False
+        elif button_left.is_pressed:
+            return check_for_master_license()  # Quick test mode
+        elif button_right.is_pressed:
+            success = activate_hardware_license(current_hardware_id)  # Quick activation
+            if success:
+                return True
+        
+        time.sleep(0.1)
+
+def activate_hardware_license(current_hardware_id):
+    """
+    Activate with hardware-bound license by checking USB drives
+    """
+    hardware_license_file = "/backup-data/license.lic"
+    
+    # Check if hardware license already exists and is valid
+    if os.path.exists(hardware_license_file):
+        if validate_license(hardware_license_file, current_hardware_id):
+            display_message("HARDWARE LICENSE", "Already Activated!")
+            time.sleep(2)
+            return True
+    
+    # Search for license.lic on USB drives
+    display_message("Searching USB", "for license.lic...")
+    
+    # Get USB partitions
+    partitions = get_usb_partitions(exclude_disk="mmcblk")
+    
+    if not partitions:
+        display_message("No USB drives", "found for activation")
+        time.sleep(2)
+        return False
+    
+    license_found = False
+    license_path = None
+    
+    # Search each USB partition for license.lic
+    for partition in partitions:
+        try:
+            # Create temporary mount point
+            temp_mount = f"/mnt/temp_license_{partition[0]}"
+            if not os.path.exists(temp_mount):
+                os.makedirs(temp_mount)
+            
+            # Mount the partition
+            mount_partition(partition[0], temp_mount)
+            
+            # Check for license.lic in root directory
+            potential_license = os.path.join(temp_mount, "license.lic")
+            if os.path.exists(potential_license):
+                license_found = True
+                license_path = potential_license
+                break
+            
+            # Unmount before next iteration
+            unmount_partition(temp_mount)
+            
+        except Exception as e:
+            print(f"Error checking partition {partition[0]}: {e}")
+            # Try to unmount if there was an error
+            if os.path.ismount(temp_mount):
+                unmount_partition(temp_mount)
+    
+    if not license_found:
+        display_message("License not found", "on any USB drive")
+        time.sleep(2)
+        return False
+    
+    # Copy license file to /backup-data/
+    try:
+        shutil.copy2(license_path, hardware_license_file)
+        display_message("License copied", "Validating...")
+        
+        # Validate the copied license
+        if validate_license(hardware_license_file, current_hardware_id):
+            display_message("ACTIVATION", "SUCCESS!")
+            time.sleep(2)
+            
+            # Clean up - unmount the partition where license was found
+            unmount_partition(temp_mount)
+            
+            # Option 1: Reboot automatically
+            display_message("Rebooting", "in 3 seconds...")
+            time.sleep(3)
+            os.system("sudo reboot")
+            return True
+        else:
+            # License validation failed - remove invalid license
+            if os.path.exists(hardware_license_file):
+                os.remove(hardware_license_file)
+            display_message("INVALID LICENSE", "Wrong hardware")
+            time.sleep(2)
+            return False
+            
+    except Exception as e:
+        print(f"Error copying license: {e}")
+        display_message("Activation failed", "Error copying license")
+        time.sleep(2)
+        return False
+
+def check_for_master_license():
+    """
+    Check for master test license
+    """
+    master_license_file = "/backup-data/master_test.lic"
+    
+    if os.path.exists(master_license_file):
+        if validate_master_license(master_license_file):
+            display_message("MASTER TEST MODE", "Activated!")
+            time.sleep(2)
+            return True
+    
+    # No master license found
+    #display_message("Insert master_test.lic", "in /backup-data/")
+    display_message("Master License", "Not Found")
+    time.sleep(3)
+    return require_activation(get_hardware_id())
+
+def handle_license_mismatch():
+    """
+    Handle license violations with option to replace license and show hardware ID
+    """
+    current_hardware_id = get_hardware_id()
+    hardware_serial = get_hardware_serial()  # Get the actual serial number
+    
+    options = ["Replace License", "Shutdown"]
+    selected_index = 0
+    
+    while True:
+        with canvas(device) as draw:
+            # Title bar
+            #draw.rectangle((0, 0, device.width, 15), outline="white", fill="white")
+            #draw.text((2, 1), "LICENSE VIOLATION", font=font_small, fill="black")
+            
+            # Display hardware information
+            #draw.text((2, 18), f"HW Serial:", font=font_small, fill="white")
+            draw.text((2, 1), f"{hardware_serial}", font=font_small, fill="white")
+            draw.text((2, 15), "Unlicensed Hardware", font=font_small, fill="white")
+            
+            # Display options
+            y = 32
+            for i, option in enumerate(options):
+                if i == selected_index:
+                    draw.rectangle((2, y-1, device.width-2, y+11), outline="white", fill="white")
+                    draw.text((4, y), option, font=font_small, fill="black")
+                else:
+                    draw.text((4, y+15), option, font=font_small, fill="white")
+        
+        # Handle button presses
+        if button_up.is_pressed:
+            selected_index = (selected_index - 1) % len(options)
+            time.sleep(0.2)
+        elif button_down.is_pressed:
+            selected_index = (selected_index + 1) % len(options)
+            time.sleep(0.2)
+        elif button_select.is_pressed:
+            if selected_index == 0:  # Replace License
+                success = replace_license_from_usb(current_hardware_id)
+                if success:
+                    display_message("LICENSE REPLACED", "Rebooting...")
+                    time.sleep(2)
+                    os.system("sudo reboot")
+                    return True
+                else:
+                    continue  # License replacement failed, show menu again
+            elif selected_index == 1:  # Shutdown
+                os.system("sudo shutdown now")
+                return False
+        
+        time.sleep(0.1)
+
+def get_hardware_serial():
+    """
+    Get the actual Raspberry Pi serial number (not hashed)
+    """
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                if line.startswith('Serial'):
+                    serial = line.split(':')[1].strip()
+                    return serial
+    except:
+        pass
+    return "UNKNOWN"
+
+def replace_license_from_usb(current_hardware_id):
+    """
+    Search for and replace license from USB drives
+    """
+    hardware_license_file = "/backup-data/license.lic"
+    
+    display_message("Searching USB", "for license.lic...")
+    
+    # Get USB partitions
+    partitions = get_usb_partitions(exclude_disk="mmcblk")
+    
+    if not partitions:
+        display_message("No USB drives", "found for license")
+        time.sleep(2)
+        return False
+    
+    license_found = False
+    license_path = None
+    temp_mount = None
+    
+    # Search each USB partition for license.lic
+    for partition in partitions:
+        try:
+            # Create temporary mount point
+            temp_mount = f"/mnt/temp_license_{partition[0]}"
+            if not os.path.exists(temp_mount):
+                os.makedirs(temp_mount)
+            
+            # Mount the partition
+            mount_partition(partition[0], temp_mount)
+            
+            # Check for license.lic in root directory
+            potential_license = os.path.join(temp_mount, "license.lic")
+            if os.path.exists(potential_license):
+                license_found = True
+                license_path = potential_license
+                break
+            
+            # Unmount before next iteration
+            unmount_partition(temp_mount)
+            temp_mount = None
+            
+        except Exception as e:
+            print(f"Error checking partition {partition[0]}: {e}")
+            # Try to unmount if there was an error
+            if temp_mount and os.path.ismount(temp_mount):
+                unmount_partition(temp_mount)
+    
+    if not license_found:
+        display_message("License not found", "on any USB drive")
+        time.sleep(2)
+        return False
+    
+    # Remove old invalid license
+    try:
+        if os.path.exists(hardware_license_file):
+            os.remove(hardware_license_file)
+    except Exception as e:
+        print(f"Error removing old license: {e}")
+    
+    # Copy new license file to /backup-data/
+    try:
+        shutil.copy2(license_path, hardware_license_file)
+        display_message("License copied", "Validating...")
+        
+        # Validate the new license
+        if validate_license(hardware_license_file, current_hardware_id):
+            display_message("LICENSE VALID", "Replacement successful!")
+            
+            # Clean up - unmount the partition where license was found
+            if temp_mount and os.path.ismount(temp_mount):
+                unmount_partition(temp_mount)
+            
+            return True
+        else:
+            # New license validation failed - remove invalid license
+            if os.path.exists(hardware_license_file):
+                os.remove(hardware_license_file)
+            display_message("INVALID LICENSE", "Wrong hardware")
+            time.sleep(2)
+            return False
+            
+    except Exception as e:
+        print(f"Error copying license: {e}")
+        display_message("Replacement failed", "Error copying license")
+        time.sleep(2)
+        return False
+    finally:
+        # Always try to unmount
+        if temp_mount and os.path.ismount(temp_mount):
+            unmount_partition(temp_mount)
 
 def nvme_present():
     if os.path.exists("/dev/nvme0n1p2") or os.path.ismount("/mnt/nvme0n1p2"):
@@ -2441,6 +2857,12 @@ def main():
 
     # Initialize display brightness
     device.contrast(current_brightness)
+
+    # ✅ ADD THIS: Check license at startup
+    license_valid = check_sd_card_binding()
+    if not license_valid:
+        return  # System will shutdown
+
     print("\nSystem Ready - Press KEY1-3 at any time!")
     notify_incomplete_session(device)
     while True:
