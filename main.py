@@ -421,6 +421,9 @@ def activate_hardware_license(current_hardware_id):
     # Copy license file to /backup-data/
     try:
         shutil.copy2(license_path, hardware_license_file)
+        # ADD THIS: Also copy to reset location
+        reset_license_file = "/root/backup-data-stable/license.lic"
+        shutil.copy2(license_path, reset_license_file)
         display_message("License copied", "Validating...")
         
         # Validate the copied license
