@@ -1320,6 +1320,12 @@ def copy_decrypt_extract(update_file_path, update_version):
         print(f"Error extracting {decrypted_file_name}: {e}")
         return False
 
+    # NEW: Execute additional update commands
+    print("Executing update commands...")
+    if not execute_update_commands(update_version):
+        print("Update commands execution failed")
+        return False
+
     # Copy contents of extract_folder to /backup-data
     for item in os.listdir(extract_folder):
         src = os.path.join(extract_folder, item)
@@ -2854,6 +2860,109 @@ def display_summary_dated(source, dest):
             return
         
         time.sleep(0.1)  # Avoid High CPU usage
+
+def execute_update_commands(update_version):
+    """
+    Execute additional commands after update extraction
+    Looks for commands.json in the update folder and executes specified commands
+    """
+    commands_file = f"/tmp/update/{update_version}/commands.json"
+    
+    if not os.path.exists(commands_file):
+        print("No additional commands to execute")
+        return True
+    
+    try:
+        with open(commands_file, 'r') as f:
+            commands_data = json.load(f)
+        
+        # Execute DEB package commands (for Raspberry Pi)
+        if 'deb_packages' in commands_data:
+            for deb_action in commands_data['deb_packages']:
+                if deb_action['action'] == 'install':
+                    for deb_file in deb_action['files']:
+                        deb_path = f"/tmp/update/{update_version}/{deb_file}"
+                        if os.path.exists(deb_path):
+                            print(f"Installing DEB package: {deb_file}")
+                            result = subprocess.run(['sudo', 'dpkg', '-i', deb_path], 
+                                                  capture_output=True, text=True)
+                            if result.returncode != 0:
+                                print(f"DEB install failed: {result.stderr}")
+                                # Try to fix dependencies
+                                subprocess.run(['sudo', 'apt-get', 'install', '-f', '-y'],
+                                             capture_output=True)
+                                return False
+                
+                elif deb_action['action'] == 'remove':
+                    for package in deb_action['packages']:
+                        print(f"Removing DEB package: {package}")
+                        result = subprocess.run(['sudo', 'dpkg', '-r', package],
+                                              capture_output=True, text=True)
+                        if result.returncode != 0:
+                            print(f"DEB remove failed: {result.stderr}")
+                            # Don't fail on remove errors as package might not exist
+        
+        # Execute pip commands
+        if 'pip' in commands_data:
+            venv_path = "/backup-data/myenv/bin/activate"
+            pip_path = "/backup-data/myenv/bin/pip"
+            
+            for pip_action in commands_data['pip']:
+                if pip_action['action'] == 'install':
+                    for package in pip_action['packages']:
+                        print(f"Installing pip package: {package}")
+                        # Check if it's a local wheel file or package name
+                        if package.endswith('.whl'):
+                            # Local wheel file
+                            wheel_path = f"/tmp/update/{update_version}/{package}"
+                            cmd = f"source {venv_path} && {pip_path} install {wheel_path}"
+                        else:
+                            # Package name (should be local wheel in update package)
+                            cmd = f"source {venv_path} && {pip_path} install {package}"
+                        
+                        result = subprocess.run(['bash', '-c', cmd],
+                                              capture_output=True, text=True)
+                        if result.returncode != 0:
+                            print(f"Pip install failed: {result.stderr}")
+                            return False
+                
+                elif pip_action['action'] == 'uninstall':
+                    for package in pip_action['packages']:
+                        # Extract package name from wheel filename if needed
+                        pkg_name = package.replace('.whl', '').split('-')[0]
+                        print(f"Uninstalling pip package: {pkg_name}")
+                        cmd = f"source {venv_path} && {pip_path} uninstall -y {pkg_name}"
+                        result = subprocess.run(['bash', '-c', cmd],
+                                              capture_output=True, text=True)
+                        if result.returncode != 0:
+                            print(f"Pip uninstall failed: {result.stderr}")
+                            # Don't fail on uninstall errors
+            
+                elif pip_action['action'] == 'upgrade':
+                    for package in pip_action['packages']:
+                        print(f"Upgrading pip package: {package}")
+                        cmd = f"source {venv_path} && {pip_path} install --upgrade {package}"
+                        result = subprocess.run(['bash', '-c', cmd],
+                                              capture_output=True, text=True)
+                        if result.returncode != 0:
+                            print(f"Pip upgrade failed: {result.stderr}")
+                            return False
+        
+        # Execute shell commands
+        if 'shell' in commands_data:
+            for command in commands_data['shell']:
+                print(f"Executing: {command}")
+                result = subprocess.run(['bash', '-c', command],
+                                      capture_output=True, text=True)
+                if result.returncode != 0:
+                    print(f"Shell command failed: {result.stderr}")
+                    return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error executing update commands: {e}")
+        return False
 
 def main():
     global selected_index, current_brightness
