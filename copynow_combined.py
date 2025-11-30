@@ -223,7 +223,7 @@ def create_timestamped_filename(src_path):
     timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(src_path)).strftime("%m-%d-%Y-%H-%M")
     return f"{base}-{timestamp}{ext}"  # Changed from [timestamp] to -timestamp
 
-def copy_mode(device, mode, buttons=None):
+def copy_mode(device, mode, buttons=None, custom_dst=None):
     global stop_flag
     stop_flag = False
     button_up, button_down, button_select = buttons
@@ -256,7 +256,10 @@ def copy_mode(device, mode, buttons=None):
         f.write(f"{mode},{datetime.datetime.now().isoformat()}\n")
         f.flush()
         os.fsync(f.fileno())
-    dst = JUST_DST if mode == 'just' else DATED_DST
+    dst = custom_dst if custom_dst else (JUST_DST if mode == 'just' else DATED_DST)
+    # Create custom destination folder if it doesn't exist
+    if custom_dst and not os.path.exists(custom_dst):
+        os.makedirs(custom_dst, exist_ok=True)
     if not os.path.ismount(DST_ROOT):
         stop_flag = "dst"
         display_progress(device, 100, "DST DISCONNECTED", 0, 0, mode)
