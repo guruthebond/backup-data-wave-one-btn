@@ -248,8 +248,8 @@ sudo ip addr add 192.168.0.1/24 dev wlan0
 
 # Update version information
 echo "Updating version information..."
-echo "Version 6.0" > version
-echo "Oct 2025" >> version
+echo "Version 6.2" > version
+echo "Nov 2025" >> version
 
 # Create system backup
 echo "Creating system backup..."
