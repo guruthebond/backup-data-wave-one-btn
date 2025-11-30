@@ -29,6 +29,7 @@ import sys
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
+import glob
 
 
 # Add these near the top with other global variables
@@ -630,10 +631,18 @@ def replace_license_from_usb(current_hardware_id):
         if temp_mount and os.path.ismount(temp_mount):
             unmount_partition(temp_mount)
 
+def get_nvme_partition():
+    """Return first NVMe block device partition, e.g. /dev/nvme0n1p2"""
+    parts = sorted(glob.glob("/dev/nvme*n*p*"))
+    if parts:
+        return parts[0]   # return first detected partition
+    return None
+
 def nvme_present():
-    if os.path.exists("/dev/nvme0n1p2") or os.path.ismount("/mnt/nvme0n1p2"):
-        return True
-    return False
+    part = get_nvme_partition()
+    if not part:
+        return False
+    return os.path.exists(part)
 
 menu_items = [
     "\uf0c5 Just Copy",
@@ -723,7 +732,13 @@ def display_current_datetime():
         time.sleep(0.1)  # Small delay to reduce CPU usage
 
 
-def ssd_info_menu(device_path="/dev/nvme0n1p2"):
+def ssd_info_menu(device_path=None):
+    if device_path is None:
+        device_path = get_nvme_partition()
+
+    if device_path is None:
+        display_message("SSD Error", "No NVMe detected")
+        return
     """Display info for the built-in SSD"""
     mount_point = "/mnt/ssd_info"
     
@@ -804,13 +819,16 @@ def ssd_menu():
 
         # Process the choice
         if choice == "\uf1c0 SSD Info":
-            ssd_info_menu("/dev/nvme0n1p2")
+            ssd_info_menu(get_nvme_partition())
             # After returning from SSD Info, reset navigation state
             selected_index = 0
         
         elif choice == "\uf019 Offload Data":
             # Get actual SSD partition info instead of placeholders
-            ssd_device = "nvme0n1p2"
+            ssd_device = get_nvme_partition()
+            if ssd_device is None:
+                display_message("SSD Error", "No NVMe detected")
+                continue
     
             # Mount the SSD temporarily to get size info
             mount_point = "/mnt/ssd_temp"
@@ -823,7 +841,7 @@ def ssd_menu():
     
             try:
                 # Mount SSD to get actual size information
-                mount_partition(ssd_device, mount_point)
+                mount_partition(ssd_device.split('/')[-1], mount_point)
         
                 # Get actual partition info
                 total_size, free_size = get_partition_info(mount_point)
@@ -851,11 +869,12 @@ def ssd_menu():
                 if os.path.ismount("/mnt/dst"): unmount_partition("/mnt/dst")
 
                 # Mount SSD as source and destination as usual
-                mount_partition(ssd_partition[0], "/mnt/src")
+                mount_partition(ssd_partition[0].split('/')[-1], "/mnt/src")
                 mount_partition(dest[0], "/mnt/dst")
 
                 # Use existing Just Copy logic
-                copy_mode(device, mode="just", buttons=(button_up, button_down, button_select))
+                copy_mode(device, mode="just", buttons=(button_up, button_down, button_select),
+                          custom_dst="/mnt/dst/ssd-offload")  # Use custom destination
 
                 # Cleanup
                 unmount_partition("/mnt/src")
@@ -926,7 +945,10 @@ def display_summary_offload(source, dest):
 
 def confirm_format_nvme():
     confirmations = 0
-    device_path = "/dev/nvme0n1p2"
+    device_path = get_nvme_partition()
+    if device_path is None:
+        display_message("Format Error", "No NVMe found")
+        return
     last_button_time = 0
     button_cooldown = 0.3
 
